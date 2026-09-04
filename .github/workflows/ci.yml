@@ -10,8 +10,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Syntax check
         run: |
           for f in $(git ls-files '*.mjs' '*.js'); do node --check "$f"; done
-      # The full test suite lives in the upstream kit (it needs the Android app/
-      # assets that are not part of this panel-only checkout).
+
+      # Ten of the kit's tests read its Android app/ tree, which is not part of a
+      # panel-only checkout. Those run in the autoform-kit CI; the rest run here.
+      - name: Tests
+        run: |
+          files=""
+          skipped=0
+          for f in test/*.test.js; do
+            if grep -qE '\.\./\.\./app/|\.\./app/src/' "$f"; then
+              skipped=$((skipped + 1))
+            else
+              files="$files $f"
+            fi
+          done
+          echo "running $(echo $files | wc -w) test files, skipping $skipped that need the kit's app/ tree"
+          node --test $files

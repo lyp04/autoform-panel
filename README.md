@@ -72,4 +72,4 @@ touches the application (not just the Worker shell).
 
 ## License
 
-TODO
+[MIT](./LICENSE)
