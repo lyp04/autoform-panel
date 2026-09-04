@@ -1,0 +1,499 @@
+{
+  "version": 1,
+  "baseUrl": "https://backend.example.invalid/api",
+  "endpoints": {
+    "captcha": "/auth/captcha",
+    "loginVerify": "/auth/login/verify",
+    "login": "/auth/login",
+    "userInfo": "/users/me",
+    "templateList": "/templates",
+    "templateDetail": "/templates/detail",
+    "printerState": "/printing/state",
+    "messageList": "/printing/jobs",
+    "labelRetry": "/printing/retry",
+    "uploadFile": "/files",
+    "submitEntry": "/entries",
+    "detectionData": "/entries/detection-data",
+    "snRepetition": "/entries/serial-repetition"
+  },
+  "request": {
+    "bodyEncoding": "form",
+    "authScheme": "Bearer",
+    "fingerprintHeader": "X-Client-Fingerprint",
+    "webUserAgent": "AutoFormKit-Example/1.0",
+    "webAcceptLanguage": "en"
+  },
+  "response": {
+    "codeField": "status",
+    "dataField": "result",
+    "messageFields": [
+      "message",
+      "error.message"
+    ],
+    "successValues": [
+      "ok"
+    ]
+  },
+  "auth": {
+    "loginFields": {
+      "account": "username",
+      "password": "password",
+      "captcha": "captcha",
+      "client": "challengeId"
+    },
+    "tokenFields": [
+      "accessToken"
+    ],
+    "userNameFields": [
+      "displayName",
+      "username"
+    ],
+    "successFieldsWhenCodeMissing": [
+      "result",
+      "accessToken"
+    ],
+    "dataRootWhenCodeMissing": true,
+    "sessionProofCodes": [],
+    "sessionInvalidHttpStatuses": [
+      401
+    ],
+    "sessionInvalidCodes": [],
+    "sessionInvalidMessagePatterns": []
+  },
+  "pagination": {
+    "pageParam": "page",
+    "pageStart": 1,
+    "keywordParam": "query"
+  },
+  "fields": {
+    "captchaClient": "challengeId",
+    "captchaImage": "imageBase64",
+    "templateList": [
+      "items"
+    ],
+    "template": {
+      "id": "id",
+      "name": "name",
+      "sku": "sku",
+      "step": "processStep",
+      "warehouseId": "warehouseId",
+      "fieldList": "fields"
+    },
+    "formField": {
+      "id": "id",
+      "type": "type",
+      "parentType": "parentType",
+      "typeName": "typeName",
+      "title": "title",
+      "englishTitle": "englishTitle",
+      "required": "required",
+      "visible": "visible",
+      "maxCount": "maxCount",
+      "options": "options"
+    },
+    "option": {
+      "value": "value",
+      "label": "label",
+      "englishLabel": "englishLabel",
+      "quantity": "quantity"
+    }
+  },
+  "conversion": {
+    "fieldKinds": {
+      "photo": ["image"],
+      "result": ["outcome"],
+      "items": ["items"],
+      "serial": ["serial"],
+      "scan": ["scanner"],
+      "number": ["number"],
+      "singleChoice": ["single-choice"],
+      "multipleChoice": ["multiple-choice"],
+      "text": ["text"]
+    },
+    "result": {
+      "includeUnmapped": true,
+      "mappings": [
+        {
+          "key": "accepted",
+          "label": "Accepted",
+          "labelI18n": {
+            "en": "Accepted",
+            "es": "Aceptado"
+          },
+          "operatorLabel": "Sample accepted",
+          "operatorLabelI18n": {
+            "en": "Sample accepted",
+            "es": "Ejemplo aceptado"
+          },
+          "uiColor": "#2563EB",
+          "include": true,
+          "submitValue": {
+            "state": "EXAMPLE_ACCEPTED"
+          },
+          "matchValues": [
+            "EXAMPLE_ACCEPTED"
+          ],
+          "matchLabelPatterns": []
+        }
+      ]
+    }
+  },
+  "operations": {
+    "upload": {
+      "multipartField": "file",
+      "resultPath": "url"
+    },
+    "ocr": {
+      "multipartField": "image",
+      "userInfoUrlFields": [
+        "ocrUrl"
+      ],
+      "resultPaths": [
+        "text",
+        "serial"
+      ]
+    },
+    "submit": {
+      "templateIdField": "templateId",
+      "warehouseIdField": "warehouseId",
+      "skuField": "sku",
+      "dataField": "formData",
+      "videoIdField": "videoId",
+      "videoIdValue": "",
+      "materialItemMapping": {
+        "codeField": "code",
+        "nameField": "label",
+        "quantityField": "quantity"
+      },
+      "retryableMessagePatterns": [],
+      "missingMaterialMessagePatterns": []
+    },
+    "previousSteps": {
+      "queryFields": {
+        "templateId": "templateId",
+        "warehouseId": "warehouseId",
+        "sku": "sku",
+        "serial": "serial"
+      },
+      "itemsPath": "items",
+      "itemDataPath": "formData",
+      "serialPath": "serial",
+      "missingResponseCodes": [],
+      "missingMessagePatterns": [],
+      "retryableMessagePatterns": [],
+      "alreadyExistsMessagePatterns": [],
+      "optionValueBuilders": {
+        "sample-option-object": {
+          "type": "object",
+          "members": {
+            "code": {
+              "type": "present",
+              "path": "option.id",
+              "fallbackIfMissing": ""
+            },
+            "label": {
+              "type": "firstNonEmpty",
+              "paths": [
+                "option.title",
+                "option.englishTitle"
+              ]
+            },
+            "quantity": {
+              "type": "integer",
+              "path": "option.quantity",
+              "default": 1
+            }
+          }
+        }
+      },
+      "recipeResolvers": {
+        "sample-template-detail-v1": {
+          "version": 1,
+          "identity": {
+            "templateId": {
+              "type": "present",
+              "path": "template.id",
+              "fallbackIfMissing": 0
+            },
+            "expectedStep": {
+              "type": "present",
+              "path": "template.step",
+              "fallbackIfMissing": 0
+            },
+            "warehouseId": {
+              "type": "present",
+              "path": "template.warehouseId",
+              "fallbackIfMissing": 0
+            },
+            "sku": {
+              "type": "firstNonEmpty",
+              "paths": [
+                "template.sku"
+              ]
+            }
+          },
+          "searchTextAttributes": [
+            "title",
+            "englishTitle",
+            "typeName"
+          ],
+          "optionSearchTextAttributes": [
+            "title",
+            "englishTitle",
+            "id"
+          ],
+          "kindSelectors": [
+            {
+              "kind": "sample-serial",
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "type",
+                    "equalsAny": [
+                      "sample-serial"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "sample-photo",
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "type",
+                    "equalsAny": [
+                      "sample-photo"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "sample-choice",
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "type",
+                    "equalsAny": [
+                      "sample-choice"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              }
+            }
+          ],
+          "rules": [
+            {
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "kind",
+                    "equalsAny": [
+                      "sample-serial"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              },
+              "cardinality": "exactly_one",
+              "action": {
+                "type": "serial"
+              }
+            },
+            {
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "kind",
+                    "equalsAny": [
+                      "sample-photo"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              },
+              "cardinality": "exactly_one",
+              "action": {
+                "type": "photo",
+                "source": "sample-evidence",
+                "joinWith": ","
+              }
+            },
+            {
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "kind",
+                    "equalsAny": [
+                      "sample-choice"
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              },
+              "cardinality": "first_in_backend_order",
+              "action": {
+                "type": "fixedOption",
+                "optionSelectors": [
+                  {
+                    "selector": {
+                      "allOf": [
+                        {
+                          "attribute": "searchText",
+                          "containsAny": [
+                            "sample accepted"
+                          ],
+                          "caseSensitive": false
+                        }
+                      ]
+                    },
+                    "cardinality": "exactly_one"
+                  }
+                ],
+                "valueBuilder": "sample-option-object",
+                "onNoMatch": "reject"
+              }
+            },
+            {
+              "selector": {
+                "allOf": [
+                  {
+                    "attribute": "visible",
+                    "equalsAny": [
+                      false
+                    ],
+                    "caseSensitive": true
+                  }
+                ]
+              },
+              "cardinality": "first_in_backend_order",
+              "action": {
+                "type": "omit",
+                "allowRequired": false
+              }
+            }
+          ]
+        }
+      }
+    },
+    "duplicateCheck": {
+      "queryFields": {
+        "templateId": "templateId",
+        "serial": "serial"
+      },
+      "itemsPath": "items",
+      "dateFields": [
+        "submittedAt",
+        "createdAt"
+      ],
+      "dateTransforms": [],
+      "epochUnits": ["seconds", "milliseconds"],
+      "epochDigitLengths": [],
+      "numericFractionPolicy": "reject",
+      "numericEpochPrecision": "exact",
+      "textParseConsumption": "full",
+      "plausibilityScope": "all",
+      "timeZoneSource": "configured",
+      "rootValueEnabled": false,
+      "dateFormats": [
+        "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+        "yyyy-MM-dd'T'HH:mm:ssX"
+      ],
+      "timeZone": "UTC"
+    },
+    "templateDetail": {
+      "idParam": "id",
+      "alternateEntryResolvers": {
+        "sample-alternate-live-option-v1": {
+          "version": 1,
+          "searchTextAttributes": [
+            "id",
+            "title",
+            "englishTitle"
+          ],
+          "optionSearchTextAttributes": [
+            "id",
+            "title",
+            "englishTitle"
+          ],
+          "fieldSelector": {
+            "allOf": [
+              {
+                "attribute": "id",
+                "caseSensitive": true,
+                "equalsAny": [
+                  "sample-live-choice"
+                ]
+              }
+            ]
+          },
+          "optionSelector": {
+            "allOf": [
+              {
+                "attribute": "id",
+                "caseSensitive": true,
+                "equalsAny": [
+                  "sample-selected-option"
+                ]
+              }
+            ]
+          },
+          "valueBuilder": {
+            "type": "object",
+            "members": {
+              "code": {
+                "type": "present",
+                "path": "option.id",
+                "fallbackIfMissing": ""
+              },
+              "label": {
+                "type": "firstNonEmpty",
+                "paths": [
+                  "option.title",
+                  "option.englishTitle"
+                ]
+              },
+              "quantity": {
+                "type": "integer",
+                "path": "option.quantity",
+                "default": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "printing": {
+    "enabled": false,
+    "online": {
+      "statusPath": "status",
+      "values": [
+        "online"
+      ]
+    },
+    "jobsPath": "items",
+    "query": {
+      "serialParam": "serial",
+      "pageParam": "page",
+      "pageStart": 1
+    },
+    "fields": {
+      "id": "id",
+      "serial": "serial",
+      "type": "type",
+      "status": "status"
+    },
+    "values": {
+      "acceptedTypes": [],
+      "printed": [],
+      "failed": [],
+      "ongoing": []
+    },
+    "retryIdField": "id"
+  }
+}

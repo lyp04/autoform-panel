@@ -1,0 +1,82 @@
+# Safe public example. Copy to wrangler.local.toml (gitignored) before dev/deploy, then replace every
+# placeholder only in that local file. Never put live deployment identity or routes in this example.
+name = "autoform-panel"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# Cloudflare supplies the active Worker version id/tag/timestamp through this binding. Production
+# deployments must attach --tag autoform-source-<exact-full-git-commit>; otherwise the dedicated
+# runtime-provenance endpoint reports v0 while preserving all existing config/catalog bytes.
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
+# Optional: bind a custom domain so the app can fetch the catalog from a stable URL.
+# Uncomment and set a hostname that is a zone on YOUR Cloudflare account.
+# routes = [
+#   { pattern = "panel.example.invalid", custom_domain = true }
+# ]
+
+# Serve the SPA in ./public as static assets; the Worker handles /api/* and /catalog/*.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# One SQLite-backed Durable Object per ticket digest makes redemption an atomic, single-use state
+# transition. Keep the binding and migration when enabling the download-page pairing flow.
+[[durable_objects.bindings]]
+name = "APP_PAIR_TICKETS"
+class_name = "AppPairingTicketStore"
+
+[[migrations]]
+tag = "app-pair-v1"
+new_sqlite_classes = ["AppPairingTicketStore"]
+
+# Optional R2 catalog authority. Before uncommenting this binding, generate/seed the immutable,
+# byte-exact snapshot and then catalog-current-v1.json from the current GitHub catalog. While the
+# current pointer is absent, reads fall back to GitHub and publishes fail closed; once it exists,
+# R2 is the sole authority. Publishes add an immutable content-addressed snapshot, then move only
+# the current pointer with an ETag condition. Directly removing the binding is safe only before the
+# first R2-only publish. After that, roll back with an older Worker that still reads R2, or first
+# restore the exact R2 current bytes/version to GitHub and verify them before removing the binding.
+# [[r2_buckets]]
+# binding = "CATALOG_R2"
+# bucket_name = "your-private-catalog-bucket"
+
+[vars]
+# owner/name of the private catalog repo this panel publishes to. The Panel manages
+# form-profiles.json, manifest.json, and Worker-only panel-settings.json there. Keep these values
+# during the R2 migration for unseeded fallback. After an R2-only publish this repository is only a
+# stale baseline unless a separate, verified export has brought it up to the R2 current snapshot.
+GITHUB_REPO = "your-name/your-catalog-repo"
+# Optional non-default catalog branch. Omit to use the repository's default branch.
+# GITHUB_BRANCH = "main"
+# Public base URL the app fetches the catalog from — normally this worker's own URL. Used for the
+# published manifest's profilesUrl, so it must be a live host (even when authoring via `wrangler dev`).
+PUBLIC_URL = "https://panel.example.invalid"
+# Comma-separated exact Android applicationId allow-list. The download issuer must request one of
+# these values, and must use the same value for both the custom URI scheme and Intent package.
+APP_PAIR_APPLICATION_IDS = "com.autoformkit.app"
+# Absolute ticket lifetime in seconds. The Worker accepts 60..600 and defaults to 300.
+APP_PAIR_TTL_SECONDS = "300"
+# Optional AI is any OpenAI-compatible endpoint; replace both fictional values in wrangler.local.toml.
+AI_BASE_URL = "https://ai.example.invalid/v1"
+AI_MODEL = "example-model"
+
+# Secrets — set each with `wrangler secret put <NAME> --config wrangler.local.toml`, NEVER commit values:
+#   wrangler secret put BACKEND_ADAPTER_JSON --config wrangler.local.toml
+#     -> complete v1 adapter based on backend-adapter.example.json; required before first deploy.
+#        It bootstraps browser login. After login, save it in the panel to move the active copy into
+#        the private catalog's settings.backendAdapter. Never paste deployment values into this file.
+#   wrangler secret put GITHUB_TOKEN --config wrangler.local.toml
+#     -> fine-grained PAT, catalog repo ONLY, Contents: Read & Write
+#   wrangler secret put AI_API_KEY --config wrangler.local.toml
+#     -> key for the AI endpoint above (used by /api/ai/draft); optional
+#   wrangler secret put CATALOG_READ_KEY --config wrangler.local.toml
+#     -> optional read-key gating /catalog/*, /api/config, /api/profiles, /api/panel-config,
+#        /api/runtime-provenance and /api/notify
+#   wrangler secret put APP_PAIR_ISSUER_KEY --config wrangler.local.toml
+#     -> independent high-entropy server-to-server credential shared only with the authorized
+#        download Worker; never reuse CATALOG_READ_KEY or a browser/backend login token
+# When CATALOG_READ_KEY is UNSET (e.g. local `wrangler dev`) that read gate is open. There is NO panel
+# password: the panel's write/publish actions are gated solely by a valid backend login — the admin
+# signs into YOUR backend from the browser (account + password + captcha) and that token is the only gate.

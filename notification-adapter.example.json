@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "url": "https://notifications.example.invalid/hooks/demo",
+  "method": "POST",
+  "bodyTemplate": {
+    "event": "form-notification",
+    "text": "{{message}}"
+  },
+  "eventTemplates": {
+    "submission.summary": "Example run: submitted={{submittedCount}}, errors={{errorCount}}, unconfirmed={{unconfirmedPrintCount}}",
+    "runtime.failure": "Example runtime failure: {{stage}}/{{errorCode}} ({{fingerprint}})"
+  },
+  "successStatuses": [
+    200,
+    202,
+    204
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "autoform-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend-gated Cloudflare Worker + SPA for authoring form profiles and publishing them to a catalog repo.",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.local.toml",
+    "deploy": "node ../tools/deploy-panel-with-provenance.mjs",
+    "test": "node --test",
+    "selftest:deploy-provenance": "node ../tools/panel-provenance-deploy-selftest.mjs",
+    "selftest:provenance": "node ../tools/panel-runtime-provenance-selftest.mjs",
+    "verify:provenance": "node ../tools/verify-panel-runtime-provenance.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.104.0"
+  }
+}
