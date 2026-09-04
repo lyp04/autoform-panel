@@ -1,52 +1,72 @@
-# autoform-panel — `worker` branch (Cloudflare Worker deployment)
+# Autoform-Panel (`worker` branch)
 
-This branch is the AutoForm Kit panel in its **Cloudflare Worker** form: the upstream
-`lyp04/autoform-kit` panel, pinned at commit `98caef755e7c469e210e9cc7651cc7a3df997a3d`
-(see `SOURCE_COMMIT`). It is byte-for-byte the upstream `panel/` and is deployed with `wrangler`.
+The Cloudflare Workers deployment of the Autoform panel. The application code here matches the
+`server` branch — this branch just wires it to the Workers platform instead of a Node process, so
+pick the branch for where you run it.
 
-> The **`server`** branch of this repo is the same application deployed as a plain Node.js 22 server
-> (no Cloudflare). Pick the branch that matches where you're running it. The application code is the
-> same portable Web-API code on both branches; only the deployment shell differs.
+This branch tracks the panel from `your-org/autoform-kit` (the commit is recorded in
+`SOURCE_COMMIT`) and is deployed with Wrangler.
+
+## Requirements
+
+- A Cloudflare account with Workers, R2, and Durable Objects.
+- Node.js and `wrangler` (`npm install` pulls it in as a dev dependency).
 
 ## Deploy
 
-```bash
+```sh
 npm install
-cp wrangler.example.toml wrangler.toml     # fill in account id, routes, binding ids
+cp wrangler.example.toml wrangler.toml    # set your account id, route, and binding ids
 npx wrangler deploy
-# secrets (never in wrangler.toml):
-npx wrangler secret put AI_API_KEY
-npx wrangler secret put APP_PAIR_ISSUER_KEY
-npx wrangler secret put CATALOG_READ_KEY
-npx wrangler secret put GITHUB_TOKEN
 ```
 
-## Platform bindings (provided by Cloudflare)
+Secrets are set out of band, never in `wrangler.toml`:
+
+```sh
+npx wrangler secret put CATALOG_READ_KEY
+npx wrangler secret put APP_PAIR_ISSUER_KEY
+npx wrangler secret put GITHUB_TOKEN        # only for the GitHub catalog store
+npx wrangler secret put AI_API_KEY          # only if AI drafting is enabled
+```
+
+## Bindings
+
+The platform provides four things the app needs. On the `server` branch these are the modules in
+`stores/` instead.
 
 | Binding | Service |
-|---|---|
+| --- | --- |
 | `ASSETS` | Workers Static Assets (`./public`) |
-| `CATALOG_R2` | R2 bucket (catalog store) |
-| `APP_PAIR_TICKETS` | SQLite Durable Object (`AppPairingTicketStore`) |
+| `CATALOG_R2` | an R2 bucket (catalog store) |
+| `APP_PAIR_TICKETS` | a SQLite Durable Object (`AppPairingTicketStore`) |
 | `CF_VERSION_METADATA` | injected by the platform |
 
-On the `server` branch these four are provided by small native modules in `stores/` instead.
+Plain configuration variables (`PUBLIC_URL`, `BACKEND_API_BASE`, `APP_PAIR_APPLICATION_IDS`,
+`CATALOG_STORAGE_MODE`, `AI_BASE_URL`, `AI_MODEL`, …) go in `wrangler.toml` under `[vars]`. They mean
+the same as on the `server` branch — see that README for the full list.
 
-## Layout (this branch)
+## Layout
 
 ```
-src/            worker.js ({ fetch, scheduled }) + panel modules
-public/         SPA
-test/           node --test suite (247 tests)
-wrangler.example.toml   template wrangler config
-package.json    (wrangler devDependency)
-SOURCE_COMMIT   upstream lyp04/autoform-kit commit this tracks
+src/            worker.js ({ fetch, scheduled }) and the panel modules
+public/         the single-page app
+test/           node --test suite
+wrangler.example.toml
+SOURCE_COMMIT   the your-org/autoform-kit commit this branch tracks
 ```
 
-## Updating from upstream
+## Tests
 
-```bash
-# in a checkout of lyp04/autoform-kit at the desired commit:
-#   copy panel/{src,public,test,package.json,*.example.*} over this branch,
-#   update SOURCE_COMMIT, then port the same change onto the `server` branch if needed.
+```sh
+npm test
 ```
+
+## Updating from the kit
+
+Copy `src/`, `public/`, `test/`, and the example configs from a checkout of `your-org/autoform-kit`
+at the desired commit, update `SOURCE_COMMIT`, and port the same change to the `server` branch if it
+touches the application (not just the Worker shell).
+
+## License
+
+TODO
