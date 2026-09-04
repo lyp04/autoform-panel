@@ -20,7 +20,7 @@ import { SqliteDurableObjectNamespace } from "./stores/pairing-store.mjs";
 import { handleRequest, AppPairingTicketStore } from "./api/request-handler.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const ENV_FILE = process.env.AUTOFORM_ENV_FILE || "/etc/autoform-panel/env";
+const ENV_FILE = process.env.AUTOFORM_ENV_FILE || path.join(ROOT, "config", "env");
 const config = loadEnvFile(ENV_FILE, {});
 const HOST = config.LISTEN_HOST || process.env.LISTEN_HOST || "127.0.0.1";
 const PORT = Number(config.LISTEN_PORT || process.env.LISTEN_PORT || 18788);

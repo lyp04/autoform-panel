@@ -1,5 +1,5 @@
 [Unit]
-Description=AutoForm Kit panel (anker.besender.lyp04.com)
+Description=Autoform panel (panel.example.com)
 After=network-online.target
 Wants=network-online.target
 

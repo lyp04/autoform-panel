@@ -1,106 +1,154 @@
-# autoform-panel
+# Autoform-Panel
 
-Backend-gated panel for authoring AutoForm Kit form profiles and publishing them to a catalog that
-the Android App consumes (`manifest.json` → `form-profiles.json`, SHA-256 verified), plus the
-app-pairing issue/redeem endpoints.
+Self-hosted deployment of the Autoform panel: a backend-gated tool for authoring form profiles and
+publishing them as a versioned catalog that a mobile app reads. It also issues the one-time tickets
+the app uses to pair with the catalog.
 
-The application code (`src/panel/`) is the AutoForm Kit panel, written in **standard, portable
-JavaScript** — it uses the Web platform APIs (`Request`, `Response`, `Headers`, `crypto.subtle`,
-`URL`, streams) that both Cloudflare Workers **and** Node.js 22+ implement natively. Because of that,
-the exact same panel code can be deployed two ways.
+The repository has one branch per deployment target. The application code is the same on both; only
+the host around it differs.
 
----
+- **`server`** (this branch) — a plain Node.js process. No Cloudflare, no build step, no npm
+  dependencies (it uses `node:sqlite`, `node:crypto`, `node:http`).
+- **`worker`** — the Cloudflare Workers deployment. See that branch's README.
 
-## Two deployment methods
+## Requirements
 
-### Method A — Cloudflare Worker (upstream `lyp04/autoform-kit`)
+- Node.js 22 or newer.
+- A reverse proxy (nginx, Caddy, …) terminating TLS in front of it. A sample nginx vhost is in
+  `nginx/`.
 
-The panel originated as a Cloudflare Worker. In that form the platform provides the four services the
-panel needs as Worker **bindings**, configured in `wrangler.toml`:
+## Quick start
 
-| Binding | Cloudflare service |
-|---|---|
-| `ASSETS` | Workers Static Assets (`./public`) |
-| `CATALOG_R2` | an R2 bucket |
-| `APP_PAIR_TICKETS` | a SQLite Durable Object |
-| `CF_VERSION_METADATA` | injected by the platform |
-
-Deploy with `wrangler deploy` from the upstream repo. Secrets (`AI_API_KEY`, `APP_PAIR_ISSUER_KEY`,
-`CATALOG_READ_KEY`, `GITHUB_TOKEN`, …) are set with `wrangler secret put`. This is the right choice if
-you want Cloudflare's edge, autoscaling and managed storage.
-
-### Method B — native Node server (this repo)
-
-For a fixed server (no Cloudflare dependency), this repo runs the identical panel code on plain
-**Node.js 22+**. It has **no npm dependencies** — everything is Node built-ins (`node:http`,
-`node:sqlite`, `node:crypto`, `node:fs`). The four Worker bindings are provided by small, first-class
-native modules in `src/stores/`:
-
-| Binding | Native module (`src/stores/`) | Backing store |
-|---|---|---|
-| `ASSETS` | `static-assets.mjs` | files under `src/panel/public/` |
-| `CATALOG_R2` | `catalog-bucket.mjs` | content-addressed files under `data/catalog/` (R2-accurate MD5 ETags, atomic writes, per-key CAS) |
-| `APP_PAIR_TICKETS` | `pairing-store.mjs` | `data/pairing.sqlite` (single-writer, atomic one-time tickets, TTL cleanup) |
-| `CF_VERSION_METADATA` | — | read from the env file |
-
-`src/server.mjs` is an ordinary Node HTTP server: it builds a Web `Request` from the incoming Node
-request, calls `handleRequest(request, bindings)` (`src/panel/request-handler.mjs`), and streams the
-returned Web `Response` back out.
-
-#### Run
-
-```bash
-# 1) config + secrets
-cp config/env.example /etc/autoform-panel/env   # then fill in the values
-
-# 2) start (listens on 127.0.0.1:18788 by default; front it with nginx + TLS)
-AUTOFORM_ENV_FILE=/etc/autoform-panel/env node src/server.mjs
-
-# health
-curl -s http://127.0.0.1:18788/__host/health
+```sh
+git clone <this-repo> autoform-panel
+cd autoform-panel
+cp config/env.example config/env      # edit: set at least PUBLIC_URL and CATALOG_READ_KEY
+node server.mjs
 ```
 
-Run it under systemd (unit in `config/`) behind an nginx reverse proxy that terminates TLS.
+By default it listens on `127.0.0.1:18788` and keeps its data under `./data`. Check it:
 
-#### Layout
-
-```
-src/
-  server.mjs                 native HTTP server + graceful shutdown (Method B entry point)
-  config.mjs                 dotenv-style env-file loader
-  panel/                     the panel application (portable Web-API code; same as upstream)
-    request-handler.mjs      handleRequest(request, bindings) — the whole HTTP pipeline
-    app-pairing.js           issue/redeem endpoints (HMAC, one-time tickets, rate limiting)
-    catalog.js               catalog read/publish (versioning, SHA-256, CAS)
-    profile.js backend-adapter.js backend.js ai.js convert.js translate.js
-    notification-adapter.js update-source.js panel-runtime.js daily-stats.js
-    public/                  the SPA
-  stores/                    native implementations of the four Worker bindings (Method B only)
-data/
-  catalog/                   published catalog (content-addressed snapshots + current pointer)
-  pairing.sqlite             app-pairing ticket store
+```sh
+curl -s localhost:18788/__host/health
 ```
 
----
+### Running as a service
 
-## Endpoints (both methods, identical behavior)
+Everything the deployment needs lives in the project directory, so you can keep the whole thing in
+one place and symlink the system paths to it:
+
+```sh
+sudo ln -s "$PWD/config/autoform-panel.service" /etc/systemd/system/autoform-panel.service
+sudo ln -s "$PWD/nginx/autoform-panel.conf"     /etc/nginx/sites-enabled/autoform-panel.conf
+sudo systemctl daemon-reload && sudo systemctl enable --now autoform-panel
+```
+
+## Configuration
+
+Settings are read from an env file (`KEY=value`, no shell interpolation). The path is
+`AUTOFORM_ENV_FILE`, defaulting to `config/env`. `config/env.example` is a template.
+
+### Server
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LISTEN_HOST` | `127.0.0.1` | Address to bind. Keep it on loopback and put a proxy in front. |
+| `LISTEN_PORT` | `18788` | Port to bind. |
+| `DATA_DIR` | `./data` | Where the catalog and pairing database are stored. |
+| `PUBLIC_URL` | — (required) | The public origin, e.g. `https://panel.example.com`. Pairing and the catalog proof are bound to it. |
+
+### Catalog store
+
+The published catalog can live in the local filesystem or in a GitHub repo.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CATALOG_STORAGE_MODE` | `r2` | `r2` uses a content-addressed store under `DATA_DIR/catalog`. Any other value falls back to the GitHub store. |
+| `GITHUB_REPO` | — | `owner/repo` for the GitHub store, e.g. `your-org/form-catalog`. |
+| `GITHUB_BRANCH` | `main` | Branch to commit catalog files to. |
+| `GITHUB_TOKEN` | — | Token with write access, required for the GitHub store. |
+
+### Access control
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CATALOG_READ_KEY` | — | Bearer key the app sends to read the catalog. **If empty, catalog reads are public** — always set it in production. |
+| `APP_PAIR_ISSUER_KEY` | — | Server-to-server key that authorizes pairing-ticket issuance. Must be ≥ 32 chars and different from `CATALOG_READ_KEY`. |
+| `APP_PAIR_APPLICATION_IDS` | — | Comma-separated app IDs allowed to pair, e.g. `com.example.app`. |
+| `APP_PAIR_TTL_SECONDS` | `300` | Ticket lifetime, 60–600. |
+
+### Backend (the system operators log in to)
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BACKEND_API_BASE` | — | Base URL of the backend the panel authenticates against, e.g. `https://api.example.com/api`. |
+| `BACKEND_ADAPTER_JSON` | — | Optional inline adapter config (JSON). Overrides the catalog's stored adapter. |
+| `BACKEND_SESSION_PROOF_CODES` | — | Optional list of session-proof codes. |
+
+### AI drafting (optional)
+
+Leave these unset to disable the AI draft/translate features.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AI_BASE_URL` | — | An OpenAI-compatible endpoint, e.g. `https://your-llm-endpoint/v1`. |
+| `AI_MODEL` | — | Model id, e.g. `your-model`. |
+| `AI_API_KEY` | — | API key for the endpoint. |
+
+### Provenance (optional)
+
+`VERSION_ID`, `VERSION_TAG`, `VERSION_TIMESTAMP`, `SOURCE_COMMIT` are surfaced by
+`/api/runtime-provenance` and are informational only.
+
+## Layout
+
+```
+server.mjs        process entry: HTTP server, wiring, graceful shutdown
+api/              the application
+  request-handler.mjs   the whole request pipeline
+  env.mjs               env-file loader
+  *.js                  profiles, catalog, backend adapter, pairing, AI, …
+public/           the single-page app
+stores/           local implementations of the three services the app needs
+  static-assets.mjs     serves public/
+  catalog-bucket.mjs    content-addressed catalog store on the filesystem
+  pairing-store.mjs     one-time pairing tickets in SQLite
+config/           env.example and the systemd unit
+nginx/            sample vhost
+backup/           daily data backup script
+data/             runtime state (catalog, pairing.sqlite) — not in version control
+```
+
+## How it works
+
+`server.mjs` accepts a request, hands it to `api/request-handler.mjs`, and writes back the response.
+The handler gates catalog reads with `CATALOG_READ_KEY`, gates authoring behind a backend session,
+and validates every profile before publishing a new immutable catalog version. The mobile app reads
+`/api/config` and `/catalog/*`, and pairs through `/api/app-pair/v1/{issue,redeem}`.
+
+The three `stores/` modules are what the Workers version gets from the platform (static assets, an
+object store, a durable single-writer). Here they are ordinary files and a SQLite database, so the
+process is self-contained.
+
+## Endpoints
 
 | Method | Path | Auth |
-|---|---|---|
-| GET | `/api/panel-config` | none (browser bootstrap) |
-| GET | `/api/config` | catalog read key (App) |
-| GET | `/api/runtime-provenance` | catalog read key |
-| GET | `/catalog/*` | catalog read key |
-| GET | `/api/profiles` | read key **or** backend session |
+| --- | --- | --- |
+| GET | `/api/panel-config` | none |
+| GET | `/api/config` | read key |
+| GET | `/api/runtime-provenance` | read key |
+| GET | `/catalog/*` | read key |
+| GET | `/api/profiles` | read key or backend session |
 | GET | `/api/me` | backend session |
 | POST | `/api/convert` | backend session |
 | POST | `/api/ai/draft` | backend session |
 | POST | `/api/publish` | backend session |
 | POST | `/api/settings` | backend session |
 | POST | `/api/notify` | per notification adapter |
-| POST | `/api/app-pair/v1/issue` | issuer bearer key |
+| POST | `/api/app-pair/v1/issue` | issuer key |
 | POST | `/api/app-pair/v1/redeem` | one-time ticket |
-| GET | `/*` | none (static SPA) |
+| GET | `/*` | none (SPA) |
 
-> **Security note:** if `CATALOG_READ_KEY` is empty, catalog reads (`/api/config`, `/catalog/*`,
-> `/api/runtime-provenance`) become fully public. Always set it in production.
+## License
+
+TODO
