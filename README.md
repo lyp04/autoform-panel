@@ -1,13 +1,13 @@
 # Autoform-Panel (`worker` branch)
 
-![ci](https://github.com/your-org/autoform-panel/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/lyp04/autoform-panel/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
 
 The Cloudflare Workers deployment of the Autoform panel. The application code here matches the
 `server` branch — this branch just wires it to the Workers platform instead of a Node process, so
 pick the branch for where you run it.
 
-This branch tracks the panel from `your-org/autoform-kit` (the commit is recorded in
+This branch tracks the panel from `lyp04/autoform-kit` (the commit is recorded in
 `SOURCE_COMMIT`) and is deployed with Wrangler.
 
 ## Requirements
@@ -55,7 +55,7 @@ src/            worker.js ({ fetch, scheduled }) and the panel modules
 public/         the single-page app
 test/           node --test suite
 wrangler.example.toml
-SOURCE_COMMIT   the your-org/autoform-kit commit this branch tracks
+SOURCE_COMMIT   the lyp04/autoform-kit commit this branch tracks
 ```
 
 ## Tests
@@ -66,7 +66,7 @@ npm test
 
 ## Updating from the kit
 
-Copy `src/`, `public/`, `test/`, and the example configs from a checkout of `your-org/autoform-kit`
+Copy `src/`, `public/`, `test/`, and the example configs from a checkout of `lyp04/autoform-kit`
 at the desired commit, update `SOURCE_COMMIT`, and port the same change to the `server` branch if it
 touches the application (not just the Worker shell).
 
