@@ -13,6 +13,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
+import { mkdirSync } from "node:fs";
 import { loadEnvFile } from "./api/env.mjs";
 import { StaticAssets } from "./stores/static-assets.mjs";
 import { FileSystemR2Bucket } from "./stores/catalog-bucket.mjs";
@@ -25,6 +26,9 @@ const config = loadEnvFile(ENV_FILE, {});
 const HOST = config.LISTEN_HOST || process.env.LISTEN_HOST || "127.0.0.1";
 const PORT = Number(config.LISTEN_PORT || process.env.LISTEN_PORT || 18788);
 const DATA_DIR = config.DATA_DIR || process.env.DATA_DIR || path.join(ROOT, "data");
+
+// Create the runtime data directories on first run so a fresh clone works with config alone.
+mkdirSync(path.join(DATA_DIR, "catalog"), { recursive: true });
 
 const VARS = [
   "AI_BASE_URL", "AI_MODEL", "APP_PAIR_APPLICATION_IDS", "APP_PAIR_TTL_SECONDS", "BACKEND_API_BASE",
