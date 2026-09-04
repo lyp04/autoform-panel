@@ -1,5 +1,8 @@
 # Autoform-Panel (`worker` branch)
 
+![ci](https://github.com/your-org/autoform-panel/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/badge/license-MIT-blue.svg)
+
 The Cloudflare Workers deployment of the Autoform panel. The application code here matches the
 `server` branch — this branch just wires it to the Workers platform instead of a Node process, so
 pick the branch for where you run it.
