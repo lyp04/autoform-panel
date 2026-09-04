@@ -1,0 +1,2137 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>表单管理面板</title>
+<style>
+  :root { --bg:#f8fafc; --card:#fff; --line:#e2e8f0; --ink:#0f172a; --muted:#64748b; --accent:#0f766e; --danger:#dc2626; --amber:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.55 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:14px 18px; background:var(--accent); color:#fff; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  header b { font-size:16px; } header .who { margin-left:auto; font-size:13px; opacity:.9; }
+  main { max-width:820px; margin:0 auto; padding:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .card h2 { margin:0 0 4px; font-size:16px; } .card .sub { color:var(--muted); font-size:12.5px; margin-bottom:12px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+  input, textarea, select { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; background:#fff; }
+  textarea#draft { min-height:300px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; white-space:pre; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; } .row > .g { flex:1; min-width:120px; }
+  button { padding:9px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  button.ghost { background:#eef2f7; color:var(--ink); } button.danger { background:#fee2e2; color:var(--danger); padding:6px 10px; }
+  button.sm { padding:5px 10px; font-size:13px; } button:disabled { opacity:.5; cursor:default; }
+  .muted { color:var(--muted); } .hide { display:none; } .err { color:var(--danger); white-space:pre-wrap; } .ok { color:var(--accent); }
+  code { background:#f1f5f9; padding:1px 5px; border-radius:5px; font-size:12.5px; }
+  #captchaImg { height:60px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
+  .tlist .item { display:flex; gap:10px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; margin-bottom:6px; }
+  .tlist .item .grow { flex:1; }
+  .previewWrap { background:#eef2f6; border:1px solid var(--line); border-radius:12px; padding:18px 12px; display:flex; justify-content:center; }
+  .previewCap { color:var(--muted); font-size:12.5px; text-align:center; margin:8px 0 0; }
+  .aibox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px; margin:14px 0; }
+  .aibox textarea { min-height:74px; font-size:14px; line-height:1.6; }
+  .fsec { border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .fsec h3 { margin:0 0 4px; font-size:14px; } .fsec .h { color:var(--muted); font-size:12px; margin-bottom:10px; }
+  .slot { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; padding:10px; background:#f8fafc; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  .slot .g { flex:1; min-width:130px; } .num { width:92px !important; text-align:center; }
+  .matrow { display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid #f1f5f9; }
+  .matrow .mn { flex:1; font-size:13.5px; }
+  .skipmat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;margin-top:6px;max-height:220px;overflow:auto;padding:2px}
+  .skipmat label{display:flex;align-items:center;gap:8px;margin:0;padding:5px 8px;font-size:13px;color:var(--ink);border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer}
+  .skipmat label:hover{background:#f8fafc}
+  .skipmat input{width:auto;flex:0 0 auto;margin:0}
+  .skipmat .mn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sw { position:relative; width:46px; height:26px; flex:0 0 auto; } .sw input { display:none; }
+  .sw span { position:absolute; inset:0; background:#cbd5e1; border-radius:999px; transition:.15s; cursor:pointer; }
+  .sw span:before { content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .sw input:checked + span { background:var(--accent); } .sw input:checked + span:before { transform:translateX(20px); }
+  .imp { border-top:1px dashed var(--line); margin-top:14px; padding-top:12px; }
+  @media(max-width:560px){ .num{width:74px !important} }
+</style>
+</head>
+<body>
+<header><b>表单管理面板</b><span style="color:#d1fae5;font-size:12.5px">登录 → 选表单 → 编辑 → 发布，App 自动更新</span><span class="who" id="who"></span><button id="globalSettingsBtn" class="ghost sm hide" style="margin-left:8px">⚙ 全局设置</button></header>
+<main>
+
+  <section class="card" id="loginCard">
+    <h2>登录账号</h2>
+    <div class="sub">用你后端系统的账号密码登录。登录就是这个面板的门槛——登进来才能改/发布表单。</div>
+    <div class="row">
+      <div class="g"><label>账号</label><input id="account" autocomplete="username" /></div>
+      <div class="g"><label>密码</label><input id="password" type="password" autocomplete="current-password" /></div>
+    </div>
+    <label>验证码（看不清点图片换一张）</label>
+    <div class="row">
+      <img id="captchaImg" alt="captcha" title="点击换一张" />
+      <input id="captcha" style="flex:2" placeholder="输入图里的数字" />
+      <button id="loginBtn" style="flex:0 0 auto" disabled>登录</button>
+    </div>
+    <p class="err" id="loginErr"></p>
+    <details style="margin-top:10px">
+      <summary class="muted" style="cursor:pointer">已经登录过后端网页？粘贴 token 直接进（高级）</summary>
+      <label>从已登录的后端网页 F12 → Network → 请求头 <code>Authorization</code> 中复制令牌部分</label>
+      <div class="row"><input id="pasteToken" style="flex:3" placeholder="粘贴 token" /><button id="tokenBtn" class="ghost" style="flex:0 0 auto" disabled>进入</button></div>
+    </details>
+  </section>
+
+  <section class="card hide" id="pickCard">
+    <h2>选择表单</h2>
+    <div class="sub">编辑已发布表单，或从已配置的后端导入新模板。发布后，App 会在下次启动时更新。</div>
+
+    <div class="tlist" id="tlist">加载中…</div>
+    <div class="row" style="margin-top:6px"><button class="ghost sm" id="reloadBtn">刷新列表</button></div>
+
+    <details class="imp" id="importBox">
+      <summary style="cursor:pointer;font-weight:600;color:var(--accent)">➕ 从后端添加表单模板</summary>
+      <div class="sub" style="margin-top:10px">搜索模板 → 选择 → 生成草稿；字段种类和结果映射由全局 backendAdapter 配置决定。</div>
+      <div class="row">
+        <input id="kw" class="g" placeholder="按名称或关键字搜索" />
+        <button id="searchBtn" style="flex:0 0 auto">搜索</button>
+      </div>
+      <div class="tlist" id="searchList" style="margin-top:10px"></div>
+    </details>
+  </section>
+
+  <section class="card hide" id="editCard">
+    <h2>设计录入表单 <span class="muted" id="editTitle"></span></h2>
+
+    <div class="previewWrap"><div id="preview"></div></div>
+    <div class="previewCap">↑ 操作员在 App 中看到的预览（实时跟随下面的设置）</div>
+
+    <div class="aibox">
+      <label style="font-size:13px;color:#92400e;margin-top:0">💬 用大白话说你想怎么改（最简单，不用懂技术）</label>
+      <textarea id="aiInstr" placeholder="例如：&#10;· 这个表单不需要结果选择&#10;· 只保留一个上传框，可拍多张照片&#10;· 第二个框改名叫『附件照片』，最多拍 5 张&#10;· 某个列表项默认数量改成 2"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="aiBtn" style="flex:0 0 auto">✨ AI 帮我改</button>
+        <span id="aiMsg" class="muted" style="flex:1"></span>
+      </div>
+    </div>
+
+    <div id="form"></div>
+
+    <details style="margin-top:8px">
+      <summary class="muted" style="cursor:pointer">高级：直接看/改 JSON（开发用）</summary>
+      <textarea id="draft" spellcheck="false" style="margin-top:8px"></textarea>
+      <button class="ghost sm" id="applyJsonBtn" style="margin-top:6px">用这段 JSON 覆盖上面</button>
+    </details>
+
+    <div class="row" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <button id="publishBtn" style="flex:0 0 auto">✅ 发布（App 下次启动自动更新）</button>
+      <span id="editMsg" style="flex:1"></span>
+    </div>
+  </section>
+</main>
+
+<!-- 全局设置：表单排序、后端适配与结构化通知。用原生 <dialog>，::backdrop 自带遮罩，Esc 可关。 -->
+<dialog id="globalSettingsDlg" style="border:1px solid var(--line);border-radius:12px;padding:0;max-width:640px;width:calc(100% - 32px);max-height:calc(100vh - 32px);overflow:auto">
+  <div style="padding:16px 18px">
+    <div class="row" style="align-items:center">
+      <h2 style="margin:0;font-size:17px;flex:1">⚙ 全局设置</h2>
+      <button id="globalSettingsClose" class="ghost sm" type="button">关闭</button>
+    </div>
+
+    <div class="fsec" style="margin-top:14px">
+      <h3>表单顺序</h3>
+      <div class="h">用 ▲ ▼ 调整表单在 App 中的顺序，保存后在下次同步时生效。</div>
+      <div class="tlist" id="orderList">加载中…</div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <button id="saveOrderBtn" class="sm" type="button">保存顺序</button>
+        <span id="orderMsg" class="muted" style="flex:1"></span>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <h3>旧版 App 全表单结果汇总（dailyStats v1）</h3>
+      <div class="h">为旧 App 保留。v1 只能按 result key 跨表单汇总；当不同表单复用同一个 key 表示不同含义时，请改用下面的 v2 精确汇总。Panel 不根据标签、提交值或机型名称猜测分组。</div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">固定范围：<code>all_profiles</code></div>
+      <div id="dailyStatsGroups"></div>
+      <div class="row" style="margin-top:8px;align-items:center">
+        <button id="addDailyStatsGroupBtn" class="ghost sm" type="button">＋ 添加汇总组</button>
+        <button id="saveDailyStatsBtn" class="sm" type="button">保存汇总</button>
+        <span id="dailyStatsMsg" class="muted" style="flex:1"></span>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <h3>新版 App 精确今日统计（dailyStatsV2）</h3>
+      <div class="h">可选。每项按“表单 + result key”精确选择，避免同名 key 在不同表单中被误合并；还可为同一项明确选择独立录入入口。分组显示为顶部统计卡片；扁平汇总显示在卡片下方且不重复计入今日总数。旧 App 继续读取上面的 v1 配置。</div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">固定版本：<code>2</code>　固定范围：<code>all_profiles</code></div>
+      <h4 style="margin:10px 0 6px;font-size:13px">统计卡片分组</h4>
+      <div id="dailyStatsV2Groups"></div>
+      <div class="row" style="margin:8px 0 12px;align-items:center">
+        <button id="addDailyStatsV2GroupBtn" class="ghost sm" type="button">＋ 添加精确分组</button>
+      </div>
+      <h4 style="margin:10px 0 6px;font-size:13px">卡片下方扁平汇总</h4>
+      <div id="dailyStatsV2FlatSummaries"></div>
+      <div class="row" style="margin-top:8px;align-items:center">
+        <button id="addDailyStatsV2FlatBtn" class="ghost sm" type="button">＋ 添加扁平汇总</button>
+        <button id="saveDailyStatsV2Btn" class="sm" type="button">保存 v2 统计</button>
+        <span id="dailyStatsV2Msg" class="muted" style="flex:1"></span>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <h3>App 后端 &amp; 通知设置</h3>
+      <div class="h">App 从面板读取后端与运行配置（不再硬编码）。飞书通知受下面的总开关和每个表单的开关共同控制；总开关关闭时保留适配器配置，但不会发送。改完点「保存」，App 下次启动生效。</div>
+      <label>后端地址 (backendApiBase)</label>
+      <input id="backendApiBaseInput" placeholder="https://backend.example.invalid/api" />
+      <label>品牌名 (brand)</label>
+      <input id="brandInput" placeholder="我的录入表单" />
+      <label>自更新仓库 Owner (updateOwner)</label>
+      <input id="updateOwnerInput" placeholder="github-org" />
+      <label>自更新仓库 Repo (updateRepo)</label>
+      <input id="updateRepoInput" placeholder="my-app-releases" />
+      <div class="muted" style="font-size:12px;margin-top:6px">Owner/Repo 会同时保存为完全一致的旧 flat 字段和 updateSource v1，保证旧版与新版 App 访问同一公开仓库。stable/beta 仍只由设备本地选择；manifest asset、/latest 与 beta tag 路由继续使用已安装 App 的既有协议，Panel 不覆盖。</div>
+      <label>最低 App versionCode（minAppVersionCode）</label>
+      <input id="minAppVersionCodeInput" type="number" min="0" step="1" value="0" />
+      <label>Web Origin（可选，留空则不发该头）</label>
+      <input id="webOriginInput" placeholder="https://backend.example.invalid" />
+      <label>Web Referer（可选，留空则不发该头）</label>
+      <input id="webRefererInput" placeholder="https://backend.example.invalid/" />
+      <label style="display:flex;gap:8px;align-items:center"><input id="notificationsEnabledInput" type="checkbox" style="width:auto" />启用飞书通知（总开关；关闭后保留配置但不发送）</label>
+      <label>飞书通知适配器 notificationAdapter（JSON，v2 / v3）</label>
+      <textarea id="notificationAdapterInput" spellcheck="false" placeholder='{ "version": 2, "url": "https://notifications.example.invalid/hooks/demo", "method": "POST", "bodyTemplate": { "text": "{{message}}" }, "eventTemplates": { "submission.summary": "Example summary: submitted={{submittedCount}}, errors={{errorCount}}" }, "successStatuses": [200, 202] }' style="min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre"></textarea>
+      <label style="display:flex;gap:8px;align-items:center"><input id="diagnosticsEnabledInput" type="checkbox" style="width:auto" />允许最小化故障事件（还需配置 runtime.failure 模板；默认关闭）</label>
+      <label>旧版通知 Webhook（迁移期间保留）</label>
+      <input id="notifyWebhookInput" placeholder="旧 App 使用；新版请配置上面的 notificationAdapter" />
+      <label>高级：后端接口路径 (JSON)</label>
+      <textarea id="endpointsInput" spellcheck="false" placeholder='{ "login": "/auth/login" }' style="min-height:150px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre"></textarea>
+      <label>后端适配器 backendAdapter（JSON，v1）</label>
+      <textarea id="backendAdapterInput" spellcheck="false" placeholder="先通过 Cloudflare BACKEND_ADAPTER_JSON 引导；登录后可在这里保存到私有 catalog" style="min-height:280px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre"></textarea>
+      <label>会话失效业务码 (JSON 数组)</label>
+      <textarea id="sessionInvalidCodesInput" spellcheck="false" placeholder='["EXAMPLE_SESSION_EXPIRED"]' style="min-height:90px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre"></textarea>
+      <label>会话失效文案特征 (JSON 字符串数组)</label>
+      <textarea id="sessionInvalidMessagesInput" spellcheck="false" placeholder='["signed in on another workstation"]' style="min-height:90px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre"></textarea>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <button id="saveNotifyBtn" class="sm" type="button">保存</button>
+        <span id="notifyMsg" class="muted" style="flex:1"></span>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:8px">backendAdapter 会下发给新版 App；notificationAdapter、v2 eventTemplates 与 v3 deliveries/formatters 仅保存在 Worker 私有设置中。App 只收到版本匹配的同源代理契约与可用事件，并只能发送固定字段。每个表单的提交通知需在工作流中单独开启；v3 profileLabel 必须显式填写，留空时不会从表单名或型号猜测。故障事件需同时勾选上方总开关并配置 runtime.failure 模板，缺失时均关闭。旧 v1 adapter 会安全迁移为仅含通用提交汇总的 v2 配置，不会自动启用故障事件，也不会自动迁移为 v3。旧字段暂时保留给旧 App 迁移。通知适配器只支持 JSON 请求体，不允许自定义请求头；需要秘密请求头时请使用服务端中继。真实地址、路径、业务码和映射只应存 Cloudflare 或私有 catalog，不能写入公开源码。</div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Schema-driven mockup of the App form. Loaded as a module and bridged onto window so the
+     classic script below can call it. Firing fp-ready lets a draft applied during load paint itself. -->
+<script type="module">
+  import { renderFormPreview, deriveSnPlugins, syncSnFields, PHOTO_ORDER_OPTIONS } from "./form-preview.js";
+  import { createBackendClient } from "./backend-client.js";
+  window.FormPreview = { renderFormPreview, deriveSnPlugins, syncSnFields, PHOTO_ORDER_OPTIONS };
+  window.BackendClient = { createBackendClient };
+  window.dispatchEvent(new Event("fp-ready"));
+  window.dispatchEvent(new Event("backend-client-ready"));
+</script>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// `gradeMap` is the legacy wire name for the configurable result mapping consumed by existing Apps.
+const hasResults = (p) => !!(p && p.gradeMap && Object.keys(p.gradeMap).length);
+const resultKeys = (p) => Object.keys((p && p.gradeMap) || {});
+let TOKEN = "";                 // backend token (set after login; gates the worker via verifyToken)
+let DRAFT = null;               // single source of truth (the profile object)
+let PREVIEW_RESULT = null;      // optional configured result key used by the preview
+let BACKEND_ADAPTER = null;     // supplied by Worker env/private catalog; never baked into this file
+let BACKEND_CLIENT = null;
+let FP = sessionStorage.getItem("fp");
+if (!FP) { FP = [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,"0")).join(""); sessionStorage.setItem("fp", FP); }
+// Remove the credential cached by older Panel builds. Browser login now uses only the verified
+// backend account session; CATALOG_READ_KEY remains an App-only catalog/config credential.
+try { sessionStorage.removeItem("panelAccessKey"); } catch(e) {}
+
+// Call OUR worker. Sends the backend token as a Bearer — the worker verifies it (verifyToken) on
+// every call, so a valid backend login is the gate. /api/profiles also requires that token (auth:true).
+async function api(path, { method="GET", body, auth=true } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth && TOKEN) { headers["Authorization"] = "Bearer " + TOKEN; headers["X-Fp"] = FP; }
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(()=>({}));
+  if (res.status === 401 && TOKEN) { TOKEN=""; clearSession(); showLogin(); throw new Error(data.error || "登录已失效，请重新登录"); }
+  if (!res.ok) {
+    const summary=res.status===409 ? "Catalog 已被其他发布更新，请重新加载后重试" : (data.error || ("HTTP " + res.status));
+    const error=new Error(summary + (data.problems ? "\n"+data.problems.map(p=>(p.errors||[]).join("；")).join("\n") : ""));
+    error.status=res.status; throw error;
+  }
+  return data;
+}
+
+// Browser -> configured backend, interpreted by the same adapter that the Worker and App consume.
+async function backend(endpointName, options = {}) {
+  if (!BACKEND_CLIENT) throw new Error("面板后端适配器尚未配置");
+  return BACKEND_CLIENT.request(endpointName, options);
+}
+
+/* ---------- configured backend login ---------- */
+function showLogin(){ $("loginCard").classList.remove("hide"); $("pickCard").classList.add("hide"); $("editCard").classList.add("hide"); $("globalSettingsBtn").classList.add("hide"); $("who").textContent=""; if(!window._client) loadCaptcha(); }
+async function loadCaptcha() {
+  $("loginErr").textContent = "";
+  try {
+    const raw = await backend("captcha");
+    const c = BACKEND_CLIENT.captcha(raw);
+    window._client = c.client;
+    $("captchaImg").src = String(c.image).startsWith("data:") ? c.image : "data:image/png;base64," + c.image;
+  } catch (e) { $("loginErr").textContent = "验证码获取失败: " + e.message; }
+}
+$("captchaImg").onclick = loadCaptcha;
+function onLoggedIn(name){ $("who").textContent="已登录: "+(name||""); $("loginCard").classList.add("hide"); $("pickCard").classList.remove("hide"); $("globalSettingsBtn").classList.remove("hide"); loadCatalog(); }
+$("loginBtn").onclick = async () => {
+  const btn=$("loginBtn"), lbl=btn.textContent;
+  if (!window._client) await loadCaptcha();
+  btn.disabled=true; btn.textContent="登录中…"; $("loginErr").textContent="";
+  try {
+    const account=$("account").value.trim(), password=$("password").value, captcha=$("captcha").value.trim(), client=window._client;
+    const form=BACKEND_CLIENT.loginBody({ account, password, captcha, client });
+    if (BACKEND_ADAPTER.endpoints.loginVerify) await backend("loginVerify", { method:"POST", body:form });
+    const d = await backend("login", { method:"POST", body:form });
+    const token = BACKEND_CLIENT.token(d);
+    if(!token) throw new Error("登录成功但没拿到 token");
+    const name=BACKEND_CLIENT.userName(d)||account;
+    TOKEN=String(token); saveSession(String(token), name); onLoggedIn(name);
+  } catch (e) { $("loginErr").textContent="登录失败: "+e.message; alert("登录失败：\n"+e.message+"\n\n验证码区分大小写且会过期，已换新，请按新图重输。"); loadCaptcha(); }
+  finally { btn.disabled=false; btn.textContent=lbl; }
+};
+$("captcha").addEventListener("keydown", e=>{ if(e.key==="Enter") $("loginBtn").click(); });
+$("password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("captcha").focus(); });
+$("tokenBtn").onclick = async () => {
+  const t=$("pasteToken").value.trim().replace(/^Bearer\s+/i,""); if(!t){alert("先粘贴 token");return;}
+  try { const me=await backend("userInfo", { token:t }); const name=BACKEND_CLIENT.userName(me)||"(token)"; TOKEN=t; saveSession(t, name); onLoggedIn(name); }
+  catch(e){ alert("token 无效或已过期：" + e.message); }
+};
+// —— 记住登录态（localStorage），直到后端判定 token 失效——刷新不再要求重登 ——
+function saveSession(token, name){ try{ localStorage.setItem("backendToken", token); localStorage.setItem("backendName", name||""); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem("backendToken"); localStorage.removeItem("backendName"); }catch(e){} }
+async function restoreSession(){
+  let t=""; try{ t=localStorage.getItem("backendToken")||""; }catch(e){}
+  if(!t){ showLogin(); return; }
+  TOKEN=t;
+  // 用浏览器自身（登录来源签名）验 userInfo：成功=仍在登录、直接进；失败=清掉重登。
+  try{ const me=await backend("userInfo", { token:t }); onLoggedIn(BACKEND_CLIENT.userName(me)||localStorage.getItem("backendName")||"(已登录)"); }
+  catch(e){ TOKEN=""; clearSession(); showLogin(); }
+}
+
+/* ---------- published profiles list (public read) ---------- */
+async function catalogSource(){
+  // Injected local catalog (demo) wins.
+  if (window.__LOCAL_CATALOG__) return { profiles: window.__LOCAL_CATALOG__ };
+  try { return await api("/api/profiles", { auth:true }); }
+  catch (e) {
+    // A plain local static server (localhost:8790) has no worker, so /api/profiles 404s. Fall back to
+    // the bundled demo catalog so the full flow is viewable locally. Guarded to localhost — production
+    // (the deployed worker) always answers /api/profiles, so this branch never runs there.
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+      try { const m = await import("./_local-catalog.js"); window.__LOCAL_CATALOG__ = m.CATALOG; return { profiles: m.CATALOG }; } catch {}
+    }
+    throw e;
+  }
+}
+let CATALOG_PROFILES = [];
+let CATALOG_SETTINGS = {};    // sibling settings block from /api/profiles (e.g. { notifyWebhook, updatedAt })
+let CATALOG_VERSION = 0;      // optimistic-lock token: every write targets the version the editor loaded
+async function loadCatalog(){
+  $("tlist").innerHTML = "加载中…";
+  try { const cat = await catalogSource(); CATALOG_PROFILES = cat.profiles || []; CATALOG_SETTINGS = cat.settings || {}; CATALOG_VERSION=Number.isInteger(cat.version)?cat.version:0; renderCatalog(); }
+  catch (e) { $("tlist").innerHTML='<span class="err">'+esc(e.message)+'</span>'; }
+}
+function renderCatalog(){
+  if(!CATALOG_PROFILES.length){ $("tlist").innerHTML='<span class="muted">还没有已发布表单。可从下面导入第一个模板。</span>'; return; }
+  $("tlist").innerHTML="";
+  CATALOG_PROFILES.forEach(p=> $("tlist").appendChild(catalogRow(p)));
+}
+function catalogRow(p){
+  const el=document.createElement("div"); el.className="item";
+  const resultCount=resultKeys(p).length;
+  const info=(resultCount?(resultCount+" 个结果选项"):"无结果选择")+' · '+((p.photoSlots||p.uploadFields||[]).length)+' 个上传框';
+  el.innerHTML='<div class="grow"><b>'+esc(p.displayName||p.id)+'</b> <span class="muted">'+esc(p.id)+' · '+info+'</span></div>';
+  const b=document.createElement("button"); b.className="sm"; b.textContent="改";
+  b.onclick=()=>{ window._lastTemplate=null; PREVIEW_RESULT=firstResult(p);
+    applyDraft(JSON.parse(JSON.stringify(p))); $("editTitle").textContent="（编辑："+(p.displayName||p.id)+"）"; openEditor(); };
+  el.appendChild(b); return el;
+}
+function firstResult(p){ const key=resultKeys(p)[0]; return key?("result:"+key):null; }
+$("reloadBtn").onclick = loadCatalog;
+
+/* ---------- import a backend template (browser -> backend directly) ---------- */
+$("searchBtn").onclick = async () => {
+  $("searchList").innerHTML = "搜索中…";
+  try {
+    const data = await backend("templateList", {
+      token:TOKEN,
+      query:BACKEND_CLIENT.templateListQuery($("kw").value.trim())
+    });
+    renderTemplates(BACKEND_CLIENT.templateList(data));
+  } catch (e) { $("searchList").innerHTML = '<span class="err">'+esc(e.message)+'</span>'; }
+};
+function renderTemplates(list) {
+  if (!list || !list.length) { $("searchList").innerHTML = '<span class="muted">没搜到，换个关键词试试</span>'; return; }
+  $("searchList").innerHTML = "";
+  list.forEach(t => {
+    const el=document.createElement("div"); el.className="item";
+    el.innerHTML='<div class="grow"><b>'+esc(t.name||"(无名)")+'</b> <span class="muted">#'+t.id+' · '+esc(t.sku||"")+'</span></div>';
+    const b=document.createElement("button"); b.className="sm"; b.textContent="选它"; b.onclick=()=>loadTemplate(t.id);
+    el.appendChild(b); $("searchList").appendChild(el);
+  });
+}
+async function loadTemplate(id) {
+  $("editMsg").textContent=""; $("editTitle").textContent="（新：模板 #"+id+"）";
+  try {
+    const raw = await backend("templateDetail", { token:TOKEN, query:BACKEND_CLIENT.templateDetailQuery(id) });
+    const template = BACKEND_CLIENT.canonicalTemplate(raw);
+    const r = await api("/api/convert", { method:"POST", body:{ template } });               // worker: pure transform
+    window._lastTemplate = r.template; applyDraft(r.draft); openEditor();
+  } catch (e) { alert("生成草稿失败: " + e.message); }
+}
+function openEditor(){ $("editCard").classList.remove("hide"); $("editCard").scrollIntoView({behavior:"smooth"}); }
+
+/* ---------- the editor: DRAFT is the single source of truth ---------- */
+function applyDraft(p){ DRAFT = p || {}; if(hasResults(DRAFT)) DRAFT.graded = true; $("draft").value = JSON.stringify(DRAFT, null, 2); renderPreview(); renderForm(); }
+
+// The preview is live and editable: list/choice interactions update the same draft the App consumes.
+function renderPreview(){
+  const mount=$("preview");
+  if(window.FormPreview && DRAFT){ window.FormPreview.renderFormPreview(mount, DRAFT, { result: PREVIEW_RESULT, onEdit: onPreviewEdit }); }
+  else { mount.innerHTML='<div class="muted" style="padding:12px">加载预览…</div>'; }
+}
+// A preview interaction mutated DRAFT — reflect it in the JSON box + the structured editor below. Do NOT
+// re-render the preview (it already updated its own DOM; re-rendering would reset scroll/selection).
+function onPreviewEdit(){ if(!DRAFT) return; syncDraftTextarea(DRAFT); renderForm(); }
+// If a draft was applied before the preview module finished loading, paint it once it's ready.
+window.addEventListener("fp-ready", ()=>{ if(DRAFT){ renderPreview(); renderForm(); } });
+
+function renderForm(){
+  const p=DRAFT, box=$("form"); box.innerHTML="";
+  const s1=sec("基本", "配置操作员看到的表单名称和结果选择。");
+  s1.appendChild(field("表单显示名", inputCtl(p.displayName||"", v=>{ p.displayName=v; renderPreview(); })));
+  const tg=document.createElement("label"); tg.className="row"; tg.style.marginTop="10px";
+  tg.innerHTML='<span class="g" style="flex:0 0 auto">启用结果选择？</span>';
+  const sw=document.createElement("label"); sw.className="sw";
+  const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=hasResults(p);
+  cb.onchange=()=>{
+    if(cb.checked){
+      if(!hasResults(p)){ alert("这个表单还没有结果映射。请从已配置结果映射的后端模板导入，或在高级 JSON 中明确添加；面板不会猜测业务结果。"); cb.checked=false; return; }
+      p.graded=true;
+    } else { p.graded=false; delete p.gradeMap; }
+    renderPreview(); renderForm();
+  };
+  sw.appendChild(cb); sw.appendChild(document.createElement("span")); tg.appendChild(sw);
+  const hint=document.createElement("span"); hint.className="muted"; hint.style.flex="1"; hint.textContent = hasResults(p) ? ("结果 key："+resultKeys(p).join("、")) : "提交时不显示结果选择";
+  tg.appendChild(hint); s1.appendChild(tg); s1.appendChild(settingsPanel(p)); box.appendChild(s1);
+
+  const pickerVisible=p.pickerVisible===true;
+  const visibility=sec("选择器可见性","只有显式开启后，这个 profile 才会出现在新版 App 的标准表单选择器中；旧 App 会忽略这个字段。");
+  visibility.appendChild(swField("在选择器中显示",pickerVisible,value=>{ p.pickerVisible=value; syncDraftTextarea(p); }));
+  box.appendChild(visibility);
+
+  if(hasResults(p)) box.appendChild(resultOptionsEditor(p));
+  box.appendChild(snPluginsEditor(p));
+  box.appendChild(resultPhotosEditor(p));
+
+  (p.materialGroups||[]).forEach((g)=>{
+    const mats=g.materials||[]; if(!mats.length) return;
+    const s3=sec("列表项默认数量"+(g.title?("："+g.title):""), "配置每个列表项提交时的默认数量。");
+    mats.forEach((m)=>{
+      const row=document.createElement("div"); row.className="matrow";
+      const nm=document.createElement("div"); nm.className="mn"; nm.textContent=m.name||m.code; row.appendChild(nm);
+      row.appendChild(numCtl(m.defaultQty??1, 1, v=>{ m.defaultQty=v; }));
+      s3.appendChild(row);
+    });
+    box.appendChild(s3);
+  });
+  $("draft").value=JSON.stringify(p,null,2);
+}
+function sec(title,hint){ const d=document.createElement("div"); d.className="fsec"; d.innerHTML='<h3>'+esc(title)+'</h3><div class="h">'+esc(hint)+'</div>'; return d; }
+function field(lab,ctl,cls){ const d=document.createElement("div"); if(cls)d.className=cls; const l=document.createElement("label"); l.textContent=lab; d.appendChild(l); d.appendChild(ctl); return d; }
+function inputCtl(val,on){ const i=document.createElement("input"); i.value=val; i.oninput=()=>on(i.value); return i; }
+function numCtl(val,min,on){ const i=document.createElement("input"); i.type="number"; i.className="num"; i.min=min; i.value=val; i.oninput=()=>on(Math.max(min, parseInt(i.value||min,10))); return i; }
+function rangeNumCtl(val,min,max,on){ const i=document.createElement("input"); i.type="number"; i.className="num"; i.min=min; i.max=max; i.value=val; i.oninput=()=>{ const parsed=parseInt(i.value,10); const next=Math.min(max,Math.max(min,Number.isInteger(parsed)?parsed:min)); i.value=next; on(next); }; return i; }
+function selectCtl(val,options,on){ const s=document.createElement("select"); options.forEach(([value,label])=>{ const o=document.createElement("option"); o.value=value; o.textContent=label; s.appendChild(o); }); s.value=val; s.onchange=()=>on(s.value); return s; }
+const PHOTO_INPUT_SOURCE_OPTIONS=[["camera","仅拍照"],["gallery","仅从相册选择"],["file","仅从文件选择"]];
+function photoInputSourceCtl(value,on){ return selectCtl(value||"camera",PHOTO_INPUT_SOURCE_OPTIONS,on); }
+// Profile-specific appearance, scan and workflow settings.
+const COLOR_PALETTE=["#1989FA","#0F766E","#2563EB","#7C3AED","#9333EA","#EA580C","#DC2626","#BE123C","#65A30D","#16A34A","#0891B2","#111827"];
+function settingsPanel(p){
+  const wrap=document.createElement("div"); wrap.style.marginTop="12px";
+  const btn=document.createElement("button"); btn.type="button"; btn.className="ghost"; btn.textContent="⚙ 设置（样式 · 扫描 · 工作流）";
+  const body=document.createElement("div"); body.className="hide"; body.style.marginTop="10px"; body.style.padding="12px"; body.style.border="1px solid var(--line)"; body.style.borderRadius="8px";
+  btn.onclick=()=>body.classList.toggle("hide");
+  wrap.appendChild(btn); wrap.appendChild(body);
+
+  // —— 表单颜色（圆色图）——
+  const cl=document.createElement("div"); const clab=document.createElement("label"); clab.textContent="表单主题色"; cl.appendChild(clab);
+  const dots=document.createElement("div"); dots.style.cssText="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:4px";
+  const curColor=()=>String(p.uiColor||"").toLowerCase();
+  const custom=document.createElement("input"); custom.type="color"; custom.value=/^#[0-9a-fA-F]{6}$/.test(p.uiColor||"")?p.uiColor:"#1989FA"; custom.title="自定义颜色";
+  custom.style.cssText="width:34px;height:30px;border:0;background:none;cursor:pointer;padding:0";
+  const paint=()=>{ [...dots.querySelectorAll(".cdot")].forEach(d=>{ d.style.outline=(d.dataset.c.toLowerCase()===curColor())?"3px solid #0f172a":"none"; }); };
+  COLOR_PALETTE.forEach(c=>{
+    const dot=document.createElement("span"); dot.className="cdot"; dot.dataset.c=c; dot.title=c;
+    dot.style.cssText="width:28px;height:28px;border-radius:50%;background:"+c+";cursor:pointer;outline-offset:2px;border:1px solid rgba(0,0,0,.08)";
+    dot.onclick=()=>{ p.uiColor=c; custom.value=c; renderPreview(); paint(); syncDraftTextarea(p); };
+    dots.appendChild(dot);
+  });
+  custom.oninput=()=>{ p.uiColor=custom.value; renderPreview(); paint(); syncDraftTextarea(p); };
+  dots.appendChild(custom); cl.appendChild(dots); body.appendChild(cl); paint();
+
+  // —— Legacy-compatible missing-item ignore list ——
+  const ml=document.createElement("div"); ml.style.marginTop="16px";
+  const mlab=document.createElement("label"); ml.appendChild(mlab);
+  const mats=[]; (p.materialGroups||[]).forEach(g=>(g.allMaterials||g.materials||[]).forEach(m=>{ if(m&&m.code&&!mats.some(x=>x.code===m.code)) mats.push(m); }));
+  const skipCount=()=>(p.notifySkipMaterials||[]).length;
+  const paintLabel=()=>{ mlab.textContent="缺少时不自动移除、重试或通知"+(skipCount()?"（已选 "+skipCount()+"）":""); };
+  paintLabel();
+  if(!mats.length){ const n=document.createElement("div"); n.className="muted"; n.style.fontSize="12px"; n.textContent="这个表单没有配置列表项。"; ml.appendChild(n); }
+  else {
+    const grid=document.createElement("div"); grid.className="skipmat";
+    mats.forEach(m=>{
+      const r=document.createElement("label");
+      const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=(p.notifySkipMaterials||[]).includes(m.code);
+      cb.onchange=()=>{ const s=new Set(p.notifySkipMaterials||[]); if(cb.checked)s.add(m.code); else s.delete(m.code); p.notifySkipMaterials=[...s]; if(!p.notifySkipMaterials.length) delete p.notifySkipMaterials; paintLabel(); syncDraftTextarea(p); };
+      const sp=document.createElement("span"); sp.className="mn"; sp.textContent=m.name||m.code; sp.title=m.name||m.code; r.appendChild(cb); r.appendChild(sp); grid.appendChild(r);
+    });
+    ml.appendChild(grid);
+  }
+  body.appendChild(ml);
+
+  // —— App runtime policy, profile-specific and stored in the private catalog ——
+  const runtime=document.createElement("div"); runtime.style.marginTop="16px";
+  const rlab=document.createElement("label"); rlab.textContent="扫描与工作流策略（每个表单独立）"; runtime.appendChild(rlab);
+  const rhint=document.createElement("div"); rhint.className="muted"; rhint.style.fontSize="12px";
+  rhint.textContent="这些值随 profile 下发；旧 profile 会先补齐安全值供迁移，但新 App 会阻止未完整迁移的表单提交。请按旧现场行为逐项核对，只有面板显式开启的功能才会生效。"; runtime.appendChild(rhint);
+
+  const lengthInput=document.createElement("input"); lengthInput.type="number"; lengthInput.min="0";
+  lengthInput.value=Number.isInteger(p.expectedSnLength)?p.expectedSnLength:"";
+  lengthInput.placeholder="序列号长度（留空=不限制）";
+  lengthInput.oninput=()=>{ const n=parseInt(lengthInput.value,10); if(Number.isInteger(n)&&n>0)p.expectedSnLength=n; else delete p.expectedSnLength; syncDraftTextarea(p); };
+  runtime.appendChild(field("序列号长度", lengthInput));
+
+  runtime.appendChild(scannerPolicyEditor(p,"主要标识迁移 fallback 扫码策略",()=>syncDraftTextarea(p),{
+    hint:"仅在 primary 插件没有 scanner 时使用；新配置优先写到下面 primary/secondary 插件。"
+  }));
+
+  const materialPattern=inputCtl(p.materialCodePattern||"", value=>{
+    if(value)p.materialCodePattern=value; else delete p.materialCodePattern;
+    syncDraftTextarea(p);
+  });
+  materialPattern.placeholder="Java 正则；留空=仅按配置列表中的 code 字面匹配";
+  runtime.appendChild(field("列表项编码正则",materialPattern));
+
+  const workflowValue=()=>{
+    const current=p.workflow||{};
+    const legacyDuplicateAge=Number.isInteger(current.duplicateCheck?.minAgeDaysToResubmit)
+      ? Math.max(0,current.duplicateCheck.minAgeDaysToResubmit):0;
+    return Object.assign({},current, {
+      compatibilityReviewed:current.compatibilityReviewed===true,
+      previousSteps:Object.assign({
+        enabled:false,
+        scanPrecheck:false,
+        scanPrecheckExcludedResultKeys:[],
+        triggerResultKeys:[],
+        directCreateResultKeys:[],
+        artifacts:[],
+        legacyDraftArtifactKey:"",
+        templates:[],
+        identifierCasePolicy:"preserve",
+        verifyAttempts:1,
+        verifyDelayMs:0,
+        recipeMaxAttempts:1,
+        recipeRetryDelayMs:0
+      },current.previousSteps||{}, {
+        identifierCorrection:Object.assign({enabled:false,substitutions:[],resultKeys:[],applyAction:"block"},current.previousSteps?.identifierCorrection||{}),
+        scanPrecheckPolicy:Object.assign({maxMissingAttempts:1,beforeLimitAction:"block",atLimitAction:"block"},current.previousSteps?.scanPrecheckPolicy||{})
+      }),
+      photos:Object.assign({includeOptionalSlots:false},current.photos||{}),
+      alternateEntries:Object.assign({enabled:false,entries:[]},current.alternateEntries||{}),
+      duplicateCheck:Object.assign({enabled:false,unknownDateAction:"block",recentAction:"block",eligibleAction:"block"},current.duplicateCheck||{}, {
+        agePolicy:Object.assign({unit:"days",value:legacyDuplicateAge},current.duplicateCheck?.agePolicy||{})
+      }),
+      printing:Object.assign({enabled:false,preflightAction:"block",onUnconfirmed:"stop",batchEndRecheckMode:"deferred_missing_two_pass",unknownStatusPresentation:"distinct",manualReprintEnabled:false,manualReprintStatuses:[],manualReprintRequiresConfirmation:true,confirmationPolls:1,confirmationPollIntervalMs:250,maxAutoReprints:0,finalRecheckDelayMs:0},current.printing||{}),
+      materials:Object.assign({refreshBeforeSubmit:false},current.materials||{}, {
+        missingRecovery:Object.assign({enabled:false,localNotice:false},current.materials?.missingRecovery||{})
+      }),
+      submission:Object.assign({maxAttempts:1,retryDelayMs:0,interUnitDelayMs:0,roundLedgerRetentionDays:1,maxConsecutiveFailures:1},current.submission||{}, {
+        networkRetry:Object.assign({maxAttempts:0,baseDelayMs:250,maxDelayMs:250},current.submission?.networkRetry||{})
+      }),
+      notifications:Object.assign({submissionSummary:false},current.notifications||{})
+    });
+  };
+  // Opening the structured editor upgrades legacy profiles in-memory to an explicit fail-safe
+  // policy. Unknown workflow sections survive the merge, while every new decision remains visible
+  // in the draft instead of silently falling back to behavior hidden in the App.
+  p.workflow=JSON.parse(JSON.stringify(workflowValue()));
+  syncDraftTextarea(p);
+  const updateWorkflow=(section,key,value)=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    w[section]=Object.assign({},w[section]||{}, {[key]:value});
+    p.workflow=w; syncDraftTextarea(p);
+  };
+  const updateNestedWorkflow=(section,nested,key,value)=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    w[section]=Object.assign({},w[section]||{}, {
+      [nested]:Object.assign({},w[section]?.[nested]||{}, {[key]:value})
+    });
+    p.workflow=w; syncDraftTextarea(p);
+  };
+  const policies=document.createElement("div"); policies.className="row"; policies.style.marginTop="10px";
+  policies.appendChild(swField("已逐项核对旧版行为兼容性", workflowValue().compatibilityReviewed===true, value=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    w.compatibilityReviewed=value;
+    p.workflow=w; syncDraftTextarea(p);
+  }));
+  policies.appendChild(swField("启用前置步骤", !!workflowValue().previousSteps?.enabled, value=>updateWorkflow("previousSteps","enabled",value)));
+  policies.appendChild(swField("让 App 拍摄并提交可选照片框", !!workflowValue().photos?.includeOptionalSlots, value=>updateWorkflow("photos","includeOptionalSlots",value)));
+  policies.appendChild(swField("启用独立入口", !!workflowValue().alternateEntries?.enabled, value=>updateWorkflow("alternateEntries","enabled",value)));
+  policies.appendChild(swField("扫码前预检", !!workflowValue().previousSteps?.scanPrecheck, value=>updateWorkflow("previousSteps","scanPrecheck",value)));
+  policies.appendChild(swField("启用标识字符纠正", !!workflowValue().previousSteps?.identifierCorrection?.enabled, value=>updateNestedWorkflow("previousSteps","identifierCorrection","enabled",value)));
+  policies.appendChild(swField("启用重复检查", !!workflowValue().duplicateCheck?.enabled, value=>updateWorkflow("duplicateCheck","enabled",value)));
+  policies.appendChild(swField("提交后打印（不勾选则不检查打印机）", !!workflowValue().printing?.enabled, value=>updateWorkflow("printing","enabled",value)));
+  policies.appendChild(swField("允许手动补打", !!workflowValue().printing?.manualReprintEnabled, value=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    w.printing=Object.assign({},w.printing||{},{manualReprintEnabled:value});
+    if(value && (!Array.isArray(w.printing.manualReprintStatuses)||!w.printing.manualReprintStatuses.length)) w.printing.manualReprintStatuses=["failed"];
+    p.workflow=w; syncDraftTextarea(p);
+  }));
+  policies.appendChild(swField("手动补打前再次确认", workflowValue().printing?.manualReprintRequiresConfirmation!==false, value=>updateWorkflow("printing","manualReprintRequiresConfirmation",value)));
+  const updateManualReprintStatus=(status,enabled)=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    const values=new Set(Array.isArray(w.printing?.manualReprintStatuses)?w.printing.manualReprintStatuses:[]);
+    if(enabled)values.add(status);else values.delete(status);
+    w.printing=Object.assign({},w.printing||{},{manualReprintStatuses:[...values]});
+    p.workflow=w; syncDraftTextarea(p);
+  };
+  policies.appendChild(swField("失败任务可手动补打", (workflowValue().printing?.manualReprintStatuses||[]).includes("failed"), value=>updateManualReprintStatus("failed",value)));
+  policies.appendChild(swField("进行中任务可手动补打", (workflowValue().printing?.manualReprintStatuses||[]).includes("ongoing"), value=>updateManualReprintStatus("ongoing",value)));
+  policies.appendChild(swField("未知状态任务可手动补打", (workflowValue().printing?.manualReprintStatuses||[]).includes("unknown"), value=>updateManualReprintStatus("unknown",value)));
+  policies.appendChild(swField("提交前刷新列表项", !!workflowValue().materials?.refreshBeforeSubmit, value=>updateWorkflow("materials","refreshBeforeSubmit",value)));
+  policies.appendChild(swField("启用缺失列表项恢复", !!workflowValue().materials?.missingRecovery?.enabled, value=>updateNestedWorkflow("materials","missingRecovery","enabled",value)));
+  policies.appendChild(swField("缺失列表项本机提示", !!workflowValue().materials?.missingRecovery?.localNotice, value=>updateNestedWorkflow("materials","missingRecovery","localNotice",value)));
+  policies.appendChild(swField("发送飞书提交通知（需同时开启全局通知）", !!workflowValue().notifications?.submissionSummary, value=>updateWorkflow("notifications","submissionSummary",value)));
+  runtime.appendChild(policies);
+  const notificationProfileLabel=inputCtl(workflowValue().notifications?.profileLabel||"",value=>{
+    const w=JSON.parse(JSON.stringify(workflowValue()));
+    w.notifications=Object.assign({},w.notifications||{});
+    const label=value.trim();
+    if(label)w.notifications.profileLabel=label;else delete w.notifications.profileLabel;
+    p.workflow=w; syncDraftTextarea(p);
+  });
+  notificationProfileLabel.maxLength=160;
+  notificationProfileLabel.placeholder="留空=不提供；不会从表单名、型号或其他字段猜测";
+  runtime.appendChild(field("通知显示名称（可选，显式 profileLabel）",notificationProfileLabel));
+  runtime.appendChild(alternateEntriesEditor(p,workflowValue,updateWorkflow));
+
+  const policyNumbers=document.createElement("div"); policyNumbers.className="row";
+  const updateDuplicateAge=(key,value)=>updateNestedWorkflow("duplicateCheck","agePolicy",key,value);
+  policyNumbers.appendChild(field("重复记录年龄单位",selectCtl(workflowValue().duplicateCheck?.agePolicy?.unit||"days",[
+    ["days","固定天数"],["calendar_months","日历月"]
+  ],value=>updateDuplicateAge("unit",value)),"g"));
+  const age=numCtl(workflowValue().duplicateCheck?.agePolicy?.value??0,0,value=>updateDuplicateAge("value",value));
+  policyNumbers.appendChild(field("允许重录的最小年龄",age,"g"));
+  runtime.appendChild(policyNumbers);
+
+  const duplicateActions=document.createElement("div"); duplicateActions.className="row";
+  duplicateActions.appendChild(field("近期重复记录处理",selectCtl(workflowValue().duplicateCheck?.recentAction||"block",[
+    ["block","阻止提交"],["confirm","操作员确认"],["skip_as_submitted","按已提交跳过"]
+  ],value=>updateWorkflow("duplicateCheck","recentAction",value)),"g"));
+  duplicateActions.appendChild(field("达到重录年龄后的处理",selectCtl(workflowValue().duplicateCheck?.eligibleAction||"block",[
+    ["block","阻止提交"],["confirm","操作员确认"],["continue","继续提交"]
+  ],value=>updateWorkflow("duplicateCheck","eligibleAction",value)),"g"));
+  duplicateActions.appendChild(field("重复记录时间无法解析时",selectCtl(workflowValue().duplicateCheck?.unknownDateAction||"block",[
+    ["block","阻止提交"],["confirm","操作员确认"],["skip_as_submitted","按已提交跳过"]
+  ],value=>updateWorkflow("duplicateCheck","unknownDateAction",value)),"g"));
+  runtime.appendChild(duplicateActions);
+
+  const printActions=document.createElement("div"); printActions.className="row";
+  printActions.appendChild(field("打印预检未通过时",selectCtl(workflowValue().printing?.preflightAction||"block",[
+    ["block","阻止打印"],["confirm","操作员确认"],["continue","继续打印"]
+  ],value=>updateWorkflow("printing","preflightAction",value)),"g"));
+  printActions.appendChild(field("打印状态未确认时",selectCtl(workflowValue().printing?.onUnconfirmed||"stop",[
+    ["stop","停止流程"],["continue","继续流程"]
+  ],value=>updateWorkflow("printing","onUnconfirmed",value)),"g"));
+  printActions.appendChild(field("批次结束打印复查",selectCtl(workflowValue().printing?.batchEndRecheckMode||"deferred_missing_two_pass",[
+    ["deferred_missing_two_pass","立即及延迟复查缺失任务"],["inline_only","仅逐条确认，不做批末复查"]
+  ],value=>updateWorkflow("printing","batchEndRecheckMode",value)),"g"));
+  printActions.appendChild(field("未知打印状态显示",selectCtl(workflowValue().printing?.unknownStatusPresentation||"distinct",[
+    ["distinct","单独显示为未知"],["as_ongoing","按进行中样式显示"]
+  ],value=>updateWorkflow("printing","unknownStatusPresentation",value)),"g"));
+  printActions.appendChild(field("打印确认轮询次数",rangeNumCtl(workflowValue().printing?.confirmationPolls??1,1,12,value=>updateWorkflow("printing","confirmationPolls",value)),"g"));
+  printActions.appendChild(field("轮询间隔（毫秒）",rangeNumCtl(workflowValue().printing?.confirmationPollIntervalMs??250,250,30000,value=>updateWorkflow("printing","confirmationPollIntervalMs",value)),"g"));
+  runtime.appendChild(printActions);
+
+  const printLimits=document.createElement("div"); printLimits.className="row";
+  printLimits.appendChild(field("自动补打上限",rangeNumCtl(workflowValue().printing?.maxAutoReprints??0,0,3,value=>updateWorkflow("printing","maxAutoReprints",value)),"g"));
+  printLimits.appendChild(field("最终复核等待（毫秒）",rangeNumCtl(workflowValue().printing?.finalRecheckDelayMs??0,0,120000,value=>updateWorkflow("printing","finalRecheckDelayMs",value)),"g"));
+  runtime.appendChild(printLimits);
+
+  const submitLimits=document.createElement("div"); submitLimits.className="row";
+  submitLimits.appendChild(field("单条提交最多尝试",rangeNumCtl(workflowValue().submission?.maxAttempts??1,1,10,value=>updateWorkflow("submission","maxAttempts",value)),"g"));
+  submitLimits.appendChild(field("提交重试等待（毫秒）",rangeNumCtl(workflowValue().submission?.retryDelayMs??0,0,60000,value=>updateWorkflow("submission","retryDelayMs",value)),"g"));
+  submitLimits.appendChild(field("单条之间等待（毫秒）",rangeNumCtl(workflowValue().submission?.interUnitDelayMs??0,0,60000,value=>updateWorkflow("submission","interUnitDelayMs",value)),"g"));
+  submitLimits.appendChild(field("本地提交记录保留天数",rangeNumCtl(workflowValue().submission?.roundLedgerRetentionDays??1,1,30,value=>updateWorkflow("submission","roundLedgerRetentionDays",value)),"g"));
+  submitLimits.appendChild(field("连续失败上限",rangeNumCtl(workflowValue().submission?.maxConsecutiveFailures??1,1,100,value=>updateWorkflow("submission","maxConsecutiveFailures",value)),"g"));
+  runtime.appendChild(submitLimits);
+
+  const networkLimits=document.createElement("div"); networkLimits.className="row";
+  networkLimits.appendChild(field("网络额外重试次数",rangeNumCtl(workflowValue().submission?.networkRetry?.maxAttempts??0,0,100,value=>updateNestedWorkflow("submission","networkRetry","maxAttempts",value)),"g"));
+  networkLimits.appendChild(field("网络重试基础等待（毫秒）",rangeNumCtl(workflowValue().submission?.networkRetry?.baseDelayMs??250,250,60000,value=>updateNestedWorkflow("submission","networkRetry","baseDelayMs",value)),"g"));
+  networkLimits.appendChild(field("网络重试最长等待（毫秒）",rangeNumCtl(workflowValue().submission?.networkRetry?.maxDelayMs??250,250,300000,value=>updateNestedWorkflow("submission","networkRetry","maxDelayMs",value)),"g"));
+  runtime.appendChild(networkLimits);
+
+  const previousPolicy=workflowValue().previousSteps||{};
+  const identifierActions=document.createElement("div"); identifierActions.className="row";
+  identifierActions.appendChild(field("标识纠正应用方式",selectCtl(previousPolicy.identifierCorrection?.applyAction||"block",[
+    ["block","阻止并等待处理"],["confirm","操作员确认后应用"],["auto","自动应用"]
+  ],value=>updateNestedWorkflow("previousSteps","identifierCorrection","applyAction",value)),"g"));
+  identifierActions.appendChild(field("标识大小写策略",selectCtl(previousPolicy.identifierCasePolicy||"preserve",[
+    ["preserve","保持扫描值"],["match_existing","匹配已有标识大小写"]
+  ],value=>updateWorkflow("previousSteps","identifierCasePolicy",value)),"g"));
+  runtime.appendChild(identifierActions);
+
+  const scanPrecheckActions=document.createElement("div"); scanPrecheckActions.className="row";
+  scanPrecheckActions.appendChild(field("预检缺失最多尝试次数",rangeNumCtl(previousPolicy.scanPrecheckPolicy?.maxMissingAttempts??1,1,10,value=>updateNestedWorkflow("previousSteps","scanPrecheckPolicy","maxMissingAttempts",value)),"g"));
+  scanPrecheckActions.appendChild(field("达到上限前的缺失处理",selectCtl(previousPolicy.scanPrecheckPolicy?.beforeLimitAction||"block",[
+    ["block","阻止并等待处理"],["remove","移除缺失项后重试"]
+  ],value=>updateNestedWorkflow("previousSteps","scanPrecheckPolicy","beforeLimitAction",value)),"g"));
+  scanPrecheckActions.appendChild(field("达到上限时的缺失处理",selectCtl(previousPolicy.scanPrecheckPolicy?.atLimitAction||"block",[
+    ["block","阻止并等待处理"],["require_artifact","要求补充前置素材"]
+  ],value=>updateNestedWorkflow("previousSteps","scanPrecheckPolicy","atLimitAction",value)),"g"));
+  runtime.appendChild(scanPrecheckActions);
+
+  const verifyPolicy=document.createElement("div"); verifyPolicy.className="row";
+  verifyPolicy.appendChild(field("前置步骤复核次数",rangeNumCtl(previousPolicy.verifyAttempts??1,1,10,value=>updateWorkflow("previousSteps","verifyAttempts",value)),"g"));
+  verifyPolicy.appendChild(field("前置步骤复核等待（毫秒）",rangeNumCtl(previousPolicy.verifyDelayMs??0,0,30000,value=>updateWorkflow("previousSteps","verifyDelayMs",value)),"g"));
+  verifyPolicy.appendChild(field("前置配方提交最多尝试",rangeNumCtl(previousPolicy.recipeMaxAttempts??1,1,10,value=>updateWorkflow("previousSteps","recipeMaxAttempts",value)),"g"));
+  verifyPolicy.appendChild(field("前置配方重试等待（毫秒）",rangeNumCtl(previousPolicy.recipeRetryDelayMs??0,0,60000,value=>updateWorkflow("previousSteps","recipeRetryDelayMs",value)),"g"));
+  runtime.appendChild(verifyPolicy);
+
+  const substitutionsWrap=document.createElement("div"); substitutionsWrap.style.marginTop="8px";
+  const substitutionsLabel=document.createElement("label"); substitutionsLabel.textContent="标识字符替换（最多 8 项；每格恰好一个字符）";
+  const substitutionsRows=document.createElement("div");
+  const addSubstitution=document.createElement("button"); addSubstitution.type="button"; addSubstitution.className="ghost sm"; addSubstitution.textContent="添加字符替换";
+  const substitutionItems=()=>JSON.parse(JSON.stringify(workflowValue().previousSteps?.identifierCorrection?.substitutions||[]));
+  const setSubstitutionItems=value=>updateNestedWorkflow("previousSteps","identifierCorrection","substitutions",value);
+  const renderSubstitutions=()=>{
+    substitutionsRows.textContent="";
+    const values=substitutionItems();
+    values.forEach((item,index)=>{
+      const row=document.createElement("div"); row.className="row"; row.style.marginBottom="6px";
+      const from=inputCtl(item?.from||"",value=>{ const next=substitutionItems(); next[index]=Object.assign({},next[index]||{},{from:value}); setSubstitutionItems(next); });
+      from.placeholder="原字符";
+      const to=inputCtl(item?.to||"",value=>{ const next=substitutionItems(); next[index]=Object.assign({},next[index]||{},{to:value}); setSubstitutionItems(next); });
+      to.placeholder="替换字符";
+      const remove=document.createElement("button"); remove.type="button"; remove.className="danger sm"; remove.textContent="删除";
+      remove.onclick=()=>{ const next=substitutionItems(); next.splice(index,1); setSubstitutionItems(next); renderSubstitutions(); };
+      row.appendChild(field("原字符",from,"g")); row.appendChild(field("替换字符",to,"g")); row.appendChild(remove);
+      substitutionsRows.appendChild(row);
+    });
+    addSubstitution.disabled=values.length>=8;
+  };
+  addSubstitution.onclick=()=>{ const next=substitutionItems(); if(next.length>=8)return; next.push({from:"",to:""}); setSubstitutionItems(next); renderSubstitutions(); };
+  substitutionsWrap.appendChild(substitutionsLabel); substitutionsWrap.appendChild(substitutionsRows); substitutionsWrap.appendChild(addSubstitution);
+  runtime.appendChild(substitutionsWrap); renderSubstitutions();
+
+  const correctionResults=inputCtl((previousPolicy.identifierCorrection?.resultKeys||[]).join(", "), value=>{
+    updateNestedWorkflow("previousSteps","identifierCorrection","resultKeys",value.split(",").map(x=>x.trim()).filter(Boolean));
+  });
+  correctionResults.placeholder="填写结果 key；留空表示所有结果";
+  runtime.appendChild(field("标识纠正适用结果（逗号分隔）",correctionResults));
+
+  const excluded=inputCtl((previousPolicy.scanPrecheckExcludedResultKeys||[]).join(", "), value=>{
+    updateWorkflow("previousSteps","scanPrecheckExcludedResultKeys",value.split(",").map(x=>x.trim()).filter(Boolean));
+  });
+  excluded.placeholder="填写结果 key；留空表示不排除";
+  runtime.appendChild(field("扫码预检排除结果（逗号分隔）",excluded));
+
+  const triggers=inputCtl((previousPolicy.triggerResultKeys||[]).join(", "), value=>{
+    updateWorkflow("previousSteps","triggerResultKeys",value.split(",").map(x=>x.trim()).filter(Boolean));
+  });
+  triggers.placeholder="填写结果 key；留空表示不按结果触发";
+  runtime.appendChild(field("自动前置步骤触发结果（逗号分隔）",triggers));
+
+  const directCreates=inputCtl((previousPolicy.directCreateResultKeys||[]).join(", "), value=>{
+    updateWorkflow("previousSteps","directCreateResultKeys",value.split(",").map(x=>x.trim()).filter(Boolean));
+  });
+  directCreates.placeholder="必须同时出现在自动触发结果中；留空=创建前先查询";
+  runtime.appendChild(field("跳过创建前查询并直接创建的结果（逗号分隔）",directCreates));
+
+  const artifacts=document.createElement("textarea"); artifacts.spellcheck=false;
+  artifacts.style.cssText="min-height:140px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre";
+  artifacts.value=JSON.stringify(previousPolicy.artifacts||[],null,2);
+  artifacts.onchange=()=>{
+    try{
+      const value=JSON.parse(artifacts.value||"[]");
+      if(!Array.isArray(value)) throw new Error("必须是 JSON 数组");
+      updateWorkflow("previousSteps","artifacts",value);
+      renderForm();
+    }catch(error){ alert("前置步骤素材格式错误："+error.message); artifacts.value=JSON.stringify(workflowValue().previousSteps?.artifacts||[],null,2); }
+  };
+  runtime.appendChild(field("前置步骤素材 artifacts（JSON 数组）",artifacts));
+  const artifactSources=document.createElement("div"); artifactSources.className="row";
+  const configuredArtifacts=Array.isArray(previousPolicy.artifacts)?previousPolicy.artifacts:[];
+  configuredArtifacts.forEach((artifact,index)=>{
+    const label=(artifact?.title||artifact?.key||("附件 "+(index+1)))+" · 取图方式";
+    artifactSources.appendChild(field(label,photoInputSourceCtl(artifact?.inputSource||"camera",value=>{
+      const next=JSON.parse(JSON.stringify(workflowValue().previousSteps?.artifacts||[]));
+      if(!next[index])return;
+      next[index].inputSource=value;
+      updateWorkflow("previousSteps","artifacts",next);
+      artifacts.value=JSON.stringify(next,null,2);
+    }),"g"));
+  });
+  if(!configuredArtifacts.length)artifactSources.appendChild(mutedLine("当前没有前置步骤附件。"));
+  runtime.appendChild(artifactSources);
+
+  const legacyDraftArtifactKey=inputCtl(previousPolicy.legacyDraftArtifactKey||"",value=>{
+    updateWorkflow("previousSteps","legacyDraftArtifactKey",value.trim());
+  });
+  legacyDraftArtifactKey.placeholder="留空=不映射；非空时必须精确匹配 artifacts[].key";
+  runtime.appendChild(field("旧版草稿附件映射（legacyDraftArtifactKey）",legacyDraftArtifactKey));
+
+  const templates=document.createElement("textarea"); templates.spellcheck=false;
+  templates.style.cssText="min-height:180px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre";
+  templates.value=JSON.stringify(previousPolicy.templates||[],null,2);
+  templates.onchange=()=>{
+    try{
+      const value=JSON.parse(templates.value||"[]");
+      if(!Array.isArray(value)) throw new Error("必须是 JSON 数组");
+      updateWorkflow("previousSteps","templates",value);
+    }catch(error){ alert("前置步骤模板格式错误："+error.message); templates.value=JSON.stringify(workflowValue().previousSteps?.templates||[],null,2); }
+  };
+  runtime.appendChild(field("前置步骤模板（JSON 数组）",templates));
+  body.appendChild(runtime);
+  return wrap;
+}
+
+function alternateEntriesEditor(p,workflowValue,updateWorkflow){
+  const details=document.createElement("details"); details.style.cssText="flex-basis:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:10px";
+  const summary=document.createElement("summary"); summary.textContent="独立入口（结构化配置）"; summary.style.cssText="cursor:pointer;font-weight:600;font-size:13px"; details.appendChild(summary);
+  const hint=document.createElement("div"); hint.className="muted"; hint.style.cssText="font-size:12px;margin:7px 0";
+  hint.textContent="每个入口只能提交到一个 pickerVisible=false 的目标 profile。主标识、结果、照片和覆盖字段都从目标 profile 明确选择；重复检查、前置步骤和打印固定关闭。未完成兼容性核对前不要启用。";
+  details.appendChild(hint);
+  const rows=document.createElement("div"); details.appendChild(rows);
+  const add=document.createElement("button"); add.type="button"; add.className="ghost sm"; add.textContent="添加独立入口"; details.appendChild(add);
+
+  const entries=()=>JSON.parse(JSON.stringify(workflowValue().alternateEntries?.entries||[]));
+  const save=(next,rerender=false)=>{ updateWorkflow("alternateEntries","entries",next); if(rerender)render(); };
+  const patchEntry=(index,key,value,rerender=false)=>{
+    const next=entries(); next[index]=Object.assign({},next[index]||{},{[key]:value}); save(next,rerender);
+  };
+  const scannerSources=["ocr","barcode","entered"];
+  const sourceScannerPolicies=()=>{
+    const primary=Array.isArray(p.snPlugins)
+      ? p.snPlugins.find(plugin=>plugin?.key==="primary") : undefined;
+    const scanner=primary?.scanner&&typeof primary.scanner==="object"&&!Array.isArray(primary.scanner)
+      ? primary.scanner
+      : (p.scanner&&typeof p.scanner==="object"&&!Array.isArray(p.scanner)?p.scanner:{});
+    const expectedLength=scanner.expectedLength??p.expectedSnLength;
+    const hasAllowedLengths=Array.isArray(scanner.allowedLengths)&&scanner.allowedLengths.length>0;
+    const configuredAllowedScope=Array.isArray(scanner.applyAllowedLengthsTo)
+      &&scanner.applyAllowedLengthsTo.length>0
+      ? scanner.applyAllowedLengthsTo.filter(source=>scannerSources.includes(source))
+      : scannerSources;
+    return {
+      hasExpectedLength:Number.isInteger(expectedLength)&&expectedLength>=1&&expectedLength<=256,
+      hasAllowedLengths,
+      inheritedAllowedScope:hasAllowedLengths?configuredAllowedScope:[]
+    };
+  };
+  const patchScannerScope=(index,scopeKey,source,checked)=>{
+    const next=entries(); const item=Object.assign({},next[index]||{});
+    const scanner=Object.assign({},item.scanner||{});
+    const current=Array.isArray(scanner[scopeKey])
+      ? scanner[scopeKey]
+      : (scopeKey==="applyAllowedLengthsTo"
+        ? sourceScannerPolicies().inheritedAllowedScope : []);
+    const selected=checked
+      ? [...new Set([...current,source])]
+      : current.filter(item=>item!==source);
+    if(!selected.length){
+      alert((scopeKey==="applyExpectedLengthTo"?"精确长度":"允许长度")+"作用入口至少保留一个来源；如需取消允许长度覆盖，请使用“恢复继承”。");
+      render();
+      return;
+    }
+    scanner[scopeKey]=selected;
+    item.scanner=scanner; next[index]=item; save(next,true);
+  };
+  const resetAllowedScannerScope=index=>{
+    const next=entries(); const item=Object.assign({},next[index]||{});
+    const scanner=Object.assign({},item.scanner||{});
+    delete scanner.applyAllowedLengthsTo;
+    item.scanner=scanner; next[index]=item; save(next,true);
+  };
+  const patchEntryObject=(index,key,childKey,value)=>{
+    const next=entries(); const item=Object.assign({},next[index]||{});
+    item[key]=Object.assign({},item[key]||{},{[childKey]:value}); next[index]=item; save(next);
+  };
+  const patchEntryI18n=(index,key,locale,value)=>{
+    const next=entries(); const item=Object.assign({},next[index]||{}); const map=Object.assign({},item[key]||{});
+    if(value.trim())map[locale]=value;else delete map[locale];
+    if(Object.keys(map).length)item[key]=map;else delete item[key]; next[index]=item; save(next);
+  };
+  const patchToggle=(entryIndex,toggleIndex,key,value,rerender=false)=>{
+    const next=entries(); const item=Object.assign({},next[entryIndex]||{}); const toggles=JSON.parse(JSON.stringify(item.toggles||[]));
+    toggles[toggleIndex]=Object.assign({},toggles[toggleIndex]||{},{[key]:value}); item.toggles=toggles; next[entryIndex]=item; save(next,rerender);
+  };
+  const patchToggleI18n=(entryIndex,toggleIndex,locale,value)=>{
+    const next=entries(); const item=Object.assign({},next[entryIndex]||{}); const toggles=JSON.parse(JSON.stringify(item.toggles||[]));
+    const toggle=Object.assign({},toggles[toggleIndex]||{}); const map=Object.assign({},toggle.labelI18n||{});
+    if(value.trim())map[locale]=value;else delete map[locale];
+    if(Object.keys(map).length)toggle.labelI18n=map;else delete toggle.labelI18n;
+    toggles[toggleIndex]=toggle; item.toggles=toggles; next[entryIndex]=item; save(next);
+  };
+  const targetFor=id=>CATALOG_PROFILES.find(profile=>profile&&profile.id===id);
+  const declaredFields=target=>{
+    const out=[]; const addField=field=>{ if(typeof field==="string"&&field.trim()&&!out.includes(field.trim()))out.push(field.trim()); };
+    Object.values(target?.snFields||{}).forEach(addField);
+    Object.values(target?.gradeMap||{}).forEach(item=>addField(item?.field));
+    ["snPlugins","snPluginsHidden","uploadFields","photoSlots","optionalSlots","conditionalFields","operationFields","choiceFields","materialGroups"]
+      .forEach(key=>(target?.[key]||[]).forEach(item=>addField(item?.field)));
+    return out;
+  };
+  const photoFields=target=>{
+    const out=[]; ["uploadFields","photoSlots","optionalSlots"].forEach(key=>(target?.[key]||[]).forEach(item=>{
+      if(item?.field&&!out.includes(item.field))out.push(item.field);
+    })); return out;
+  };
+  const targetSelect=(value,on)=>{
+    const select=document.createElement("select");
+    const empty=document.createElement("option"); empty.value=""; empty.textContent="请选择已发布目标 profile"; select.appendChild(empty);
+    const known=new Set();
+    CATALOG_PROFILES.forEach(profile=>{
+      if(!profile||profile.id===p.id)return; known.add(profile.id);
+      const option=document.createElement("option"); option.value=profile.id;
+      option.textContent=(profile.displayName||profile.id)+" · "+(profile.pickerVisible===false?"隐藏目标":"当前可见（不能发布）"); select.appendChild(option);
+    });
+    if(value&&!known.has(value)){ const option=document.createElement("option"); option.value=value; option.textContent=value+" · 未在目录中"; select.appendChild(option); }
+    select.value=value||""; select.onchange=()=>on(select.value); return select;
+  };
+  const valueSelect=(value,values,placeholder,on)=>{
+    const select=document.createElement("select"); const empty=document.createElement("option"); empty.value=""; empty.textContent=placeholder; select.appendChild(empty);
+    const known=new Set(values); values.forEach(item=>{ const option=document.createElement("option"); option.value=item; option.textContent=item; select.appendChild(option); });
+    if(value&&!known.has(value)){ const option=document.createElement("option"); option.value=value; option.textContent=value+" · 无效引用"; select.appendChild(option); }
+    select.value=value||""; select.onchange=()=>on(select.value); return select;
+  };
+  const multiFieldSelect=(selected,values,on)=>{
+    const select=document.createElement("select"); select.multiple=true; select.size=Math.min(7,Math.max(3,values.length||3)); select.style.minHeight="72px";
+    const all=[...new Set([...(selected||[]),...values])]; all.forEach(item=>{ const option=document.createElement("option"); option.value=item; option.textContent=values.includes(item)?item:(item+" · 无效引用"); option.selected=(selected||[]).includes(item); select.appendChild(option); });
+    select.onchange=()=>on([...select.selectedOptions].map(option=>option.value)); return select;
+  };
+  const fixedFlag=(labelText,value)=>{
+    const control=swField(labelText,!!value,()=>{}); const checkbox=control.querySelector("input"); if(checkbox)checkbox.disabled=true; return control;
+  };
+  const overrideEditor=(getValue,setValue,fields,title)=>{
+    const box=document.createElement("div"); box.style.cssText="border:1px dashed var(--line);border-radius:7px;padding:8px;margin-top:8px";
+    const label=document.createElement("label"); label.textContent=title; box.appendChild(label);
+    const list=document.createElement("div"); box.appendChild(list);
+    const renderOverrides=()=>{
+      list.textContent=""; const current=getValue()||{};
+      Object.entries(current).forEach(([fieldName,raw])=>{
+        const row=document.createElement("div"); row.className="row"; row.style.cssText="gap:6px;margin:6px 0;align-items:flex-end";
+        const available=fields.filter(candidate=>candidate===fieldName||!Object.prototype.hasOwnProperty.call(current,candidate));
+        const selector=valueSelect(fieldName,available,"选择目标字段",nextField=>{
+          if(!nextField||nextField===fieldName)return;
+          const fresh=Object.assign({},getValue()||{}); const value=fresh[fieldName]; delete fresh[fieldName]; fresh[nextField]=value; setValue(fresh); renderOverrides();
+        });
+        const input=document.createElement("input"); input.value=JSON.stringify(raw)??"null"; input.placeholder='JSON 值，例如 "sample"、false 或 1';
+        input.onchange=()=>{ try{ const parsed=JSON.parse(input.value); const fresh=Object.assign({},getValue()||{}); fresh[selector.value]=parsed; setValue(fresh); }
+          catch(error){ alert("覆盖值必须是合法 JSON："+error.message); input.value=JSON.stringify((getValue()||{})[selector.value])??"null"; } };
+        const remove=document.createElement("button"); remove.type="button"; remove.className="danger sm"; remove.textContent="删除";
+        remove.onclick=()=>{ const fresh=Object.assign({},getValue()||{}); delete fresh[selector.value]; setValue(fresh); renderOverrides(); };
+        row.appendChild(field("目标字段",selector,"g")); row.appendChild(field("JSON 值",input,"g")); row.appendChild(remove); list.appendChild(row);
+      });
+    };
+    const addOverride=document.createElement("button"); addOverride.type="button"; addOverride.className="ghost sm"; addOverride.textContent="添加字段覆盖";
+    addOverride.onclick=()=>{
+      const current=Object.assign({},getValue()||{}); const nextField=fields.find(candidate=>!Object.prototype.hasOwnProperty.call(current,candidate));
+      if(!nextField){ alert(fields.length?"没有剩余可选字段":"请先选择有效的隐藏目标 profile"); return; }
+      current[nextField]=null; setValue(current); renderOverrides();
+    };
+    box.appendChild(addOverride); renderOverrides(); return box;
+  };
+
+  const render=()=>{
+    rows.textContent=""; const values=entries(); const sourcePolicies=sourceScannerPolicies();
+    add.disabled=values.length>=16
+      || (!sourcePolicies.hasExpectedLength&&!sourcePolicies.hasAllowedLengths);
+    add.title=!sourcePolicies.hasExpectedLength&&!sourcePolicies.hasAllowedLengths
+      ? "请先为来源主标识配置精确长度或允许长度策略" : "";
+    values.forEach((entry,index)=>{
+      const card=document.createElement("div"); card.style.cssText="border:1px solid var(--line);border-radius:8px;padding:10px;margin:9px 0;background:rgba(15,23,42,.015)";
+      const head=document.createElement("div"); head.className="row"; head.style.alignItems="center";
+      const name=document.createElement("b"); name.className="g"; name.textContent="入口 "+(index+1)+(entry.title?" · "+entry.title:""); head.appendChild(name);
+      const remove=document.createElement("button"); remove.type="button"; remove.className="danger sm"; remove.textContent="删除入口";
+      remove.onclick=()=>{ const next=entries(); next.splice(index,1); save(next,true); }; head.appendChild(remove); card.appendChild(head);
+
+      const basic=document.createElement("div"); basic.className="row";
+      basic.appendChild(field("入口 ID",inputCtl(entry.id||"",value=>patchEntry(index,"id",value)),"g"));
+      basic.appendChild(field("入口标题",inputCtl(entry.title||"",value=>patchEntry(index,"title",value)),"g"));
+      basic.appendChild(field("英文标题（可选）",inputCtl(entry.titleI18n?.en||"",value=>patchEntryI18n(index,"titleI18n","en",value)),"g"));
+      basic.appendChild(field("西语标题（可选）",inputCtl(entry.titleI18n?.es||"",value=>patchEntryI18n(index,"titleI18n","es",value)),"g")); card.appendChild(basic);
+
+      const targetRow=document.createElement("div"); targetRow.className="row";
+      targetRow.appendChild(field("隐藏目标 profile",targetSelect(entry.targetProfileId||"",value=>patchEntry(index,"targetProfileId",value,true)),"g"));
+      const role=valueSelect(entry.identifierRole||"",["primary"],"只支持主标识",value=>patchEntry(index,"identifierRole",value));
+      targetRow.appendChild(field("标识来源",role,"g"));
+      const target=targetFor(entry.targetProfileId); const resultOptions=Object.keys(target?.gradeMap||{});
+      targetRow.appendChild(field("提交结果 key",valueSelect(entry.resultKey||"",resultOptions,"选择目标结果",value=>patchEntry(index,"resultKey",value)),"g")); card.appendChild(targetRow);
+
+      const photoOptions=photoFields(target); const photoSelect=multiFieldSelect(entry.photoTargetFields||[],photoOptions,value=>patchEntry(index,"photoTargetFields",value));
+      card.appendChild(field("照片目标字段（可多选）",photoSelect));
+      const photoPolicy=document.createElement("div"); photoPolicy.className="row";
+      photoPolicy.appendChild(field("最少照片",rangeNumCtl(entry.minPhotos??1,1,20,value=>patchEntry(index,"minPhotos",value)),"g"));
+      photoPolicy.appendChild(field("最多照片（0 = 不限）",rangeNumCtl(entry.maxPhotos??1,0,2147483647,value=>patchEntry(index,"maxPhotos",value)),"g"));
+      photoPolicy.appendChild(field("取图方式",photoInputSourceCtl(entry.inputSource||"camera",value=>patchEntry(index,"inputSource",value)),"g"));
+      const separator=inputCtl(entry.joinWith??",",value=>patchEntry(index,"joinWith",value)); separator.placeholder="URL 拼接分隔符";
+      photoPolicy.appendChild(field("照片 URL 分隔符",separator,"g"));
+      const uploadTemplate=inputCtl(entry.uploadNameTemplate??"",value=>patchEntry(index,"uploadNameTemplate",value));
+      uploadTemplate.placeholder="必填，例如 {identifier}-alternate-entry-{index}.jpg";
+      photoPolicy.appendChild(field("上传文件名模板",uploadTemplate,"g")); card.appendChild(photoPolicy);
+
+      const retryPolicy=document.createElement("div"); retryPolicy.className="row";
+      retryPolicy.style.marginTop="8px";
+      retryPolicy.appendChild(field("明确拒绝时 POST 总尝试次数",
+        rangeNumCtl(entry.submissionRetry?.maxAttempts??1,1,10,
+          value=>patchEntryObject(index,"submissionRetry","maxAttempts",value)),"g"));
+      retryPolicy.appendChild(field("明确拒绝重试等待（毫秒）",
+        rangeNumCtl(entry.submissionRetry?.retryDelayMs??0,0,60000,
+          value=>patchEntryObject(index,"submissionRetry","retryDelayMs",value)),"g"));
+      const retryHint=document.createElement("div"); retryHint.className="muted g";
+      retryHint.style.cssText="font-size:12px;align-self:end;padding-bottom:7px";
+      retryHint.textContent="只复用同一 payload 与已上传 URL；超时、断线或未知响应绝不重试。";
+      retryPolicy.appendChild(retryHint); card.appendChild(retryPolicy);
+
+      const scannerScope=document.createElement("div"); scannerScope.style.cssText="border:1px dashed var(--line);border-radius:7px;padding:8px;margin-top:8px";
+      const sourceLabels={ocr:"OCR",barcode:"条码",entered:"手工输入"};
+      [
+        ["applyExpectedLengthTo","精确长度作用入口"],
+        ["applyAllowedLengthsTo","允许长度作用入口"]
+      ].forEach(([scopeKey,scopeLabel])=>{
+        const isAllowedScope=scopeKey==="applyAllowedLengthsTo";
+        const hasExplicitScope=Array.isArray(entry.scanner?.[scopeKey]);
+        const selectedScope=hasExplicitScope
+          ? entry.scanner[scopeKey]
+          : (isAllowedScope?sourcePolicies.inheritedAllowedScope:[]);
+        const group=document.createElement("div"); group.className="row"; group.style.marginTop="6px";
+        const label=document.createElement("label");
+        label.textContent=scopeLabel+(isAllowedScope&&!hasExplicitScope&&sourcePolicies.hasAllowedLengths?"（继承来源）":"");
+        label.style.cssText="flex:0 0 170px;align-self:center"; group.appendChild(label);
+        scannerSources.forEach(source=>{
+          const selected=Array.isArray(selectedScope)&&selectedScope.includes(source);
+          const control=swField(sourceLabels[source],selected,
+            checked=>patchScannerScope(index,scopeKey,source,checked));
+          const checkbox=control.querySelector("input");
+          if(checkbox)checkbox.disabled=isAllowedScope&&!sourcePolicies.hasAllowedLengths;
+          group.appendChild(control);
+        });
+        if(isAllowedScope){
+          const inherit=document.createElement("button"); inherit.type="button"; inherit.className="ghost sm";
+          inherit.textContent="恢复继承"; inherit.disabled=!hasExplicitScope;
+          inherit.onclick=()=>resetAllowedScannerScope(index); group.appendChild(inherit);
+        }
+        if(isAllowedScope&&!sourcePolicies.hasAllowedLengths){
+          const unavailable=document.createElement("span"); unavailable.className="muted";
+          unavailable.style.fontSize="12px"; unavailable.textContent="来源主标识未配置允许长度，当前不可用";
+          group.appendChild(unavailable);
+        }
+        if(!isAllowedScope&&!sourcePolicies.hasExpectedLength){
+          const inactive=document.createElement("span"); inactive.className="muted";
+          inactive.style.fontSize="12px";
+          inactive.textContent="来源当前无精确长度；该兼容范围保留但不生效";
+          group.appendChild(inactive);
+        }
+        scannerScope.appendChild(group);
+      });
+      card.appendChild(scannerScope);
+
+      const allFields=declaredFields(target); const serialField=target?.snFields?.primary;
+      const overrideFields=allFields.filter(item=>item!==serialField&&!['template','identity','templateId','warehouseId','sku','template.id','template.warehouseId','template.sku'].includes(item));
+      card.appendChild(overrideEditor(
+        ()=>entries()[index]?.dataOverrides||{},
+        value=>patchEntry(index,"dataOverrides",value), overrideFields,"固定字段覆盖（值为明确 JSON）"));
+      const dynamicBox=document.createElement("div"); dynamicBox.style.cssText="border:1px dashed var(--line);border-radius:7px;padding:8px;margin-top:8px";
+      const dynamicLabel=document.createElement("label"); dynamicLabel.textContent="实时模板覆盖 provider（高级配置）"; dynamicBox.appendChild(dynamicLabel);
+      const dynamicHint=document.createElement("div"); dynamicHint.className="muted"; dynamicHint.style.cssText="font-size:12px;margin:4px 0 7px";
+      dynamicHint.textContent="每个 provider 必须引用同入口 toggle、目标 template/step、adapter resolver 和唯一 outputField；字段 allow-list 与 provider 输出必须完全一致。解析或实时模板不唯一时 App 会在上传前停止。"; dynamicBox.appendChild(dynamicHint);
+      const dynamicEditor=document.createElement("textarea"); dynamicEditor.rows=10; dynamicEditor.style.width="100%";
+      dynamicEditor.value=JSON.stringify({
+        dynamicOverrideFields:Array.isArray(entry.dynamicOverrideFields)?entry.dynamicOverrideFields:[],
+        dynamicOverrideProviders:Array.isArray(entry.dynamicOverrideProviders)?entry.dynamicOverrideProviders:[]
+      },null,2);
+      dynamicEditor.onchange=()=>{ try{
+        const parsed=JSON.parse(dynamicEditor.value);
+        if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)
+            ||!Array.isArray(parsed.dynamicOverrideFields)
+            ||!Array.isArray(parsed.dynamicOverrideProviders)
+            ||Object.keys(parsed).some(key=>!["dynamicOverrideFields","dynamicOverrideProviders"].includes(key))){
+          throw new Error("只允许 dynamicOverrideFields 与 dynamicOverrideProviders 两个数组");
+        }
+        const next=entries(); next[index].dynamicOverrideFields=parsed.dynamicOverrideFields;
+        next[index].dynamicOverrideProviders=parsed.dynamicOverrideProviders; save(next,true);
+      }catch(error){ alert("实时模板 provider 必须是合法且封闭的 JSON："+error.message); render(); } };
+      dynamicBox.appendChild(dynamicEditor); card.appendChild(dynamicBox);
+
+      const presetBox=document.createElement("div"); presetBox.style.cssText="border:1px dashed var(--line);border-radius:7px;padding:8px;margin-top:8px";
+      const presetLabel=document.createElement("label"); presetLabel.textContent="互斥结果预设（可选，等宽按钮）"; presetBox.appendChild(presetLabel);
+      const presetHint=document.createElement("div"); presetHint.className="muted"; presetHint.style.cssText="font-size:12px;margin:4px 0 7px";
+      presetHint.textContent="配置后 App 只显示这些互斥按钮，普通 toggle 作为每个预设的底层动作。showCodes 控制短代码是否显示；splitLabelsOnPlus 可把唯一加号单独排成一行（两项不能同时为 true）。按钮文案/翻译、颜色、结果、底层 toggle 与字段覆盖全部由 Panel 决定；留空保持原有复选框界面。"; presetBox.appendChild(presetHint);
+      const presetEditor=document.createElement("textarea"); presetEditor.rows=14; presetEditor.style.width="100%"; presetEditor.spellcheck=false;
+      presetEditor.placeholder='{"defaultKey":"appearance","retainUntilExit":true,"showCodes":false,"splitLabelsOnPlus":true,"items":[{"key":"appearance","code":"A","label":"外观","uiColor":"#16A34A","resultKey":"A","activeToggleKeys":[],"dataOverrides":{}},{"key":"function","code":"C","label":"功能","uiColor":"#DC2626","resultKey":"A","activeToggleKeys":["functional"],"dataOverrides":{}}]}';
+      presetEditor.value=entry.resultPresets?JSON.stringify(entry.resultPresets,null,2):"";
+      presetEditor.onchange=()=>{ try{
+        const raw=presetEditor.value.trim(); const next=entries();
+        if(!raw){ delete next[index].resultPresets; save(next,true); return; }
+        const parsed=JSON.parse(raw);
+        if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)) throw new Error("必须是 JSON 对象");
+        next[index].resultPresets=parsed; save(next,true);
+      }catch(error){ alert("互斥结果预设必须是合法 JSON："+error.message); render(); } };
+      presetBox.appendChild(presetEditor); card.appendChild(presetBox);
+
+      const flags=document.createElement("div"); flags.className="row"; flags.style.marginTop="8px";
+      flags.appendChild(fixedFlag("独立入口：重复检查",entry.flags?.duplicateCheck));
+      flags.appendChild(fixedFlag("独立入口：前置步骤",entry.flags?.previousSteps));
+      flags.appendChild(fixedFlag("独立入口：打印",entry.flags?.printing));
+      const resetFlags=document.createElement("button"); resetFlags.type="button"; resetFlags.className="ghost sm"; resetFlags.textContent="恢复三个安全关闭标志";
+      resetFlags.onclick=()=>patchEntry(index,"flags",{duplicateCheck:false,previousSteps:false,printing:false},true); flags.appendChild(resetFlags); card.appendChild(flags);
+
+      const toggleWrap=document.createElement("div"); toggleWrap.style.cssText="border-top:1px solid var(--line);margin-top:10px;padding-top:8px";
+      const toggleLabel=document.createElement("label"); toggleLabel.textContent="入口开关（显示文案由 profile 提供）"; toggleWrap.appendChild(toggleLabel);
+      const toggleRows=document.createElement("div"); toggleWrap.appendChild(toggleRows);
+      (entry.toggles||[]).forEach((toggle,toggleIndex)=>{
+        const toggleCard=document.createElement("div"); toggleCard.style.cssText="border:1px dashed var(--line);border-radius:7px;padding:8px;margin:7px 0";
+        const toggleBasic=document.createElement("div"); toggleBasic.className="row";
+        toggleBasic.appendChild(field("开关 key",inputCtl(toggle.key||"",value=>patchToggle(index,toggleIndex,"key",value)),"g"));
+        toggleBasic.appendChild(field("开关文案",inputCtl(toggle.label||"",value=>patchToggle(index,toggleIndex,"label",value)),"g"));
+        toggleBasic.appendChild(field("英文文案（可选）",inputCtl(toggle.labelI18n?.en||"",value=>patchToggleI18n(index,toggleIndex,"en",value)),"g"));
+        toggleBasic.appendChild(field("西语文案（可选）",inputCtl(toggle.labelI18n?.es||"",value=>patchToggleI18n(index,toggleIndex,"es",value)),"g")); toggleCard.appendChild(toggleBasic);
+        const togglePolicy=document.createElement("div"); togglePolicy.className="row";
+        togglePolicy.appendChild(swField("默认开启",toggle.default===true,value=>patchToggle(index,toggleIndex,"default",value)));
+        togglePolicy.appendChild(swField("退出独立入口前保留状态",toggle.retainUntilExit===true,value=>patchToggle(index,toggleIndex,"retainUntilExit",value)));
+        const removeToggle=document.createElement("button"); removeToggle.type="button"; removeToggle.className="danger sm"; removeToggle.textContent="删除开关";
+        removeToggle.onclick=()=>{ const next=entries(); next[index].toggles.splice(toggleIndex,1); save(next,true); }; togglePolicy.appendChild(removeToggle); toggleCard.appendChild(togglePolicy);
+        toggleCard.appendChild(overrideEditor(
+          ()=>entries()[index]?.toggles?.[toggleIndex]?.dataOverrides||{},
+          value=>patchToggle(index,toggleIndex,"dataOverrides",value), overrideFields,"开关开启时的字段覆盖"));
+        toggleRows.appendChild(toggleCard);
+      });
+      const addToggle=document.createElement("button"); addToggle.type="button"; addToggle.className="ghost sm"; addToggle.textContent="添加入口开关"; addToggle.disabled=(entry.toggles||[]).length>=16;
+      addToggle.onclick=()=>{ const next=entries(); next[index].toggles=Array.isArray(next[index].toggles)?next[index].toggles:[]; next[index].toggles.push({key:"",label:"",default:false,retainUntilExit:false,dataOverrides:{}}); save(next,true); };
+      toggleWrap.appendChild(addToggle); card.appendChild(toggleWrap); rows.appendChild(card);
+    });
+  };
+  add.onclick=()=>{ const next=entries(); const sourcePolicies=sourceScannerPolicies();
+    if(next.length>=16||(!sourcePolicies.hasExpectedLength&&!sourcePolicies.hasAllowedLengths))return;
+    const scanner={applyExpectedLengthTo:[...scannerSources]};
+    next.push({
+    id:"",title:"",targetProfileId:"",identifierRole:"primary",resultKey:"",
+    photoTargetFields:[],joinWith:",",minPhotos:1,maxPhotos:1,inputSource:"camera",
+    uploadNameTemplate:"",toggles:[],
+    scanner,
+    submissionRetry:{maxAttempts:1,retryDelayMs:0},
+    flags:{duplicateCheck:false,previousSteps:false,printing:false},dataOverrides:{},
+    dynamicOverrideFields:[],dynamicOverrideProviders:[]
+  }); save(next,true); };
+  render(); return details;
+}
+// small labelled iOS-style switch (matches the .sw styles)
+function swField(labelText,checked,on){
+  const w=document.createElement("label"); w.className="row"; w.style.cssText="margin:0;flex:0 0 auto;gap:6px";
+  const t=document.createElement("span"); t.className="muted"; t.style.fontSize="12px"; t.textContent=labelText;
+  const sw=document.createElement("label"); sw.className="sw"; const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!checked;
+  cb.onchange=()=>on(cb.checked); sw.appendChild(cb); sw.appendChild(document.createElement("span"));
+  w.appendChild(t); w.appendChild(sw); return w;
+}
+function syncDraftTextarea(p){ $("draft").value=JSON.stringify(p,null,2); }
+
+function scannerPolicyEditor(owner,title,onChange,opts={}){
+  const details=document.createElement("details"); details.style.cssText="flex-basis:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:7px";
+  const summary=document.createElement("summary"); summary.textContent=title; summary.style.cssText="cursor:pointer;font-weight:600;font-size:13px"; details.appendChild(summary);
+  if(opts.hint){ const hint=mutedLine(opts.hint); hint.style.margin="6px 0"; details.appendChild(hint); }
+  const body=document.createElement("div"); body.className="row"; body.style.cssText="gap:8px;margin-top:8px;align-items:flex-end"; details.appendChild(body);
+  const current=()=>owner.scanner&&typeof owner.scanner==="object"&&!Array.isArray(owner.scanner)?owner.scanner:{};
+  const set=(key,value)=>{
+    const next=Object.assign({},current());
+    if(value===undefined) delete next[key]; else next[key]=value;
+    if(key==="preferredPrefixes") delete next.preferredSnPrefixes;
+    if(key==="stripLabels" && (!Array.isArray(value)||value.length===0)) delete next.stripLabelsFrom;
+    if(key==="allowedLengths" && (!Array.isArray(value)||value.length===0)) delete next.applyAllowedLengthsTo;
+    if(Object.keys(next).length) owner.scanner=next; else delete owner.scanner;
+    onChange();
+  };
+  const optionalNum=(key,label)=>{
+    const input=document.createElement("input"); input.type="number"; input.min="1"; input.max="256"; input.className="num";
+    input.value=Number.isInteger(current()[key])?current()[key]:""; input.placeholder="留空";
+    input.oninput=()=>{ const n=Number(input.value); set(key,input.value!==""&&Number.isInteger(n)&&n>0?n:undefined); };
+    body.appendChild(field(label,input));
+  };
+  const list=(key,label,placeholder,aliases=[])=>{
+    const input=inputCtl((current()[key]||aliases.map(k=>current()[k]).find(Array.isArray)||[]).join(", "),value=>{
+      const items=value.split(",").map(x=>x.trim()).filter(Boolean);
+      if(key==="stripLabelsFrom"&&items.length&&!(current().stripLabels||[]).length){
+        alert("请先配置至少一个需识别并剥离的标签"); input.value=""; set(key,undefined); return;
+      }
+      set(key,items.length?items:undefined);
+    }); input.placeholder=placeholder; body.appendChild(field(label,input,"g"));
+  };
+  const numberList=(key,label,placeholder)=>{
+    const configured=Array.isArray(current()[key])?current()[key]:[];
+    const input=inputCtl(configured.join(", "),value=>{
+      const items=value.split(",").map(x=>x.trim()).filter(Boolean)
+        .map(x=>/^\d+$/.test(x)?Number(x):x);
+      set(key,items.length?items:undefined);
+    }); input.placeholder=placeholder; body.appendChild(field(label,input,"g"));
+  };
+  const optionalSelect=(key,label,choices)=>{
+    const select=selectCtl(current()[key]??"",[["","未配置（兼容默认）"],...choices],value=>set(key,value===""?undefined:value));
+    body.appendChild(field(label,select));
+  };
+  optionalNum("expectedLength","精确长度（旧版 fallback）");
+  numberList("allowedLengths","允许长度（逗号分隔）","例如 8, 10（仅示例）");
+  optionalNum("minLength","候选最短"); optionalNum("maxLength","候选最长");
+  list("applyExpectedLengthTo","精确长度应用入口","ocr, barcode, entered");
+  list("applyAllowedLengthsTo","允许长度作用入口","ocr, barcode, entered");
+  const lengthHint=mutedLine("允许长度供新版 App 使用；精确长度可同时保留为旧版 App fallback，但必须包含在允许长度中。未配置允许长度作用入口时默认应用于 OCR、条码和手输。");
+  lengthHint.style.flexBasis="100%"; body.appendChild(lengthHint);
+  optionalSelect("autoTextMode","自动文字识别",[["always","始终并行"],["fallback","条码失败后"]]);
+  optionalSelect("candidateMode","候选选择",[["ranked","评分最高"],["ordered","按来源顺序"]]);
+  optionalSelect("caseMode","大小写归一化",[["upper","转大写"],["preserve","保留"]]);
+  optionalSelect("labelMatchMode","标签匹配",[["literal","字面匹配"],["compact_optional_slash","忽略空白/可省斜杠"]]);
+  optionalSelect("candidateCharacterMode","候选字符",[["identifier","字母数字及 ._/-"],["alphanumeric","仅字母数字"]]);
+  list("preferredPrefixes","优先前缀","例如 ZX, QY（仅示例）",["preferredSnPrefixes"]);
+  list("candidateOrder","候选来源顺序","label, prefix, general");
+  list("applyCandidateRulesTo","候选约束应用入口","ocr, barcode, entered");
+  list("stripLabels","识别并剥离的标签","例如 S/N（仅示例）");
+  list("stripLabelsFrom","剥离标签的入口","ocr, barcode, entered（需先配置标签）");
+  list("rejectedSubstrings","拒绝包含文本","逗号分隔；请只填私有规则");
+  const toggles=document.createElement("div"); toggles.className="row"; toggles.style.cssText="flex-basis:100%;gap:14px";
+  toggles.appendChild(swField("拒绝纯数字",current().rejectNumericOnly===true,value=>set("rejectNumericOnly",value)));
+  toggles.appendChild(swField("必须同时含字母和数字",current().requireLetterAndDigit===true,value=>set("requireLetterAndDigit",value)));
+  toggles.appendChild(swField("移除空白",current().removeWhitespace!==false,value=>set("removeWhitespace",value)));
+  body.appendChild(toggles);
+  const prompt=inputCtl(current().prompt||"",value=>set("prompt",value||undefined)); prompt.placeholder="扫码页提示（留空=使用字段名称）";
+  body.appendChild(field("扫码提示",prompt,"g"));
+  return details;
+}
+
+// Input plugins: each box can be renamed, required, searchable and scannable.
+// Edits write back to snFields/requiresSecondSn (syncSnFields) so the app still submits correctly.
+function snPluginsEditor(p){
+  const FP=window.FormPreview;
+  if(!Array.isArray(p.snPlugins) && FP){ p.snPlugins = FP.deriveSnPlugins(p); }
+  if(!Array.isArray(p.snPlugins)) p.snPlugins=[];
+  if(!Array.isArray(p.snPluginsHidden)) p.snPluginsHidden=[];
+  const s=sec("输入与扫码字段（插件）","字段来自后端模板。显示开关决定 App 是否展示并提交；关闭后配置仍会保留。框下灰字是对应提交字段。");
+  const sync=()=>{ if(FP&&FP.syncSnFields) FP.syncSnFields(p); syncDraftTextarea(p); renderPreview(); };
+  // Enabled (snPlugins) first, then hidden (snPluginsHidden). The 显示 switch moves a plugin between the
+  // two lists; the preview + app render snPlugins only, so hiding one = it disappears everywhere.
+  const rows=[...p.snPlugins.map(pl=>({pl,shown:true})), ...p.snPluginsHidden.map(pl=>({pl,shown:false}))];
+  rows.forEach(({pl,shown})=>{
+    const r=document.createElement("div"); r.className="slot"; if(!shown) r.style.opacity="0.55";
+    r.appendChild(field("框名称"+(shown?"":"（已隐藏）"), inputCtl(pl.label||"", v=>{ pl.label=v; sync(); }), "g"));
+    const placeholder=inputCtl(pl.placeholder||"",v=>{
+      if(v) pl.placeholder=v; else delete pl.placeholder;
+      delete pl.placeholderI18n;
+      sync();
+    });
+    placeholder.placeholder="留空=沿用框名称；发布时自动补英语/西班牙语";
+    r.appendChild(field("输入框提示",placeholder,"g"));
+    const toggles=document.createElement("div"); toggles.className="row"; toggles.style.cssText="flex-basis:100%;gap:14px;margin-top:2px";
+    if(pl.key==="primary"){ const b=document.createElement("span"); b.className="muted"; b.style.fontSize="12px"; b.textContent="（主要标识·常驻）"; toggles.appendChild(b); }
+    else toggles.appendChild(swField("显示", shown, on=>{
+      if(on){ p.snPluginsHidden=p.snPluginsHidden.filter(x=>x!==pl); if(!p.snPlugins.includes(pl)) p.snPlugins.push(pl); }
+      else { p.snPlugins=p.snPlugins.filter(x=>x!==pl); if(!p.snPluginsHidden.includes(pl)) p.snPluginsHidden.push(pl); }
+      sync(); renderForm();
+    }));
+    toggles.appendChild(swField("必填*", pl.required, v=>{ pl.required=v; sync(); }));
+    toggles.appendChild(swField("搜索🔍", pl.search!==false, v=>{ pl.search=v; sync(); }));
+    if(pl.key==="primary" || pl.key==="secondary") {
+      toggles.appendChild(swField("扫码⊡", pl.scan!==false, v=>{ pl.scan=v; sync(); }));
+    }
+    r.appendChild(toggles);
+    const fl=document.createElement("div"); fl.style.cssText="flex-basis:100%;font-size:11.5px;color:#94a3b8;margin-top:3px";
+    fl.textContent = pl.field ? ("对应提交字段："+pl.field) : "⚠ 未绑定字段";
+    if(!pl.field) fl.style.color="#b45309";
+    r.appendChild(fl); s.appendChild(r);
+    if(pl.key==="primary" || pl.key==="secondary") {
+      r.appendChild(scannerPolicyEditor(pl,"此字段扫码策略",sync,{
+        hint:"相机扫码、OCR、手输与重扫共用长度和内容约束；关闭扫码后 App 不显示相机入口。"
+      }));
+    }
+  });
+  const note=document.createElement("div"); note.className="muted"; note.style.fontSize="12px";
+  note.textContent="「显示」开=App 里出现并提交该字段；关=不出现、不提交，但配置保留、随时开回来。";
+  s.appendChild(note);
+  return s;
+}
+
+function h3mini(t){ const d=document.createElement("div"); d.style.cssText="flex-basis:100%;font-weight:600;font-size:13px;margin-bottom:2px"; d.textContent=t; return d; }
+function mutedLine(t){ const d=document.createElement("div"); d.className="muted"; d.style.fontSize="12px"; d.textContent=t; return d; }
+function resultOptionsEditor(p){
+  const s=sec("结果选项","旧版/导入标签、key 和提交值保持不变；这里单独编辑新版操作员看到的标签和颜色。");
+  Object.entries(p.gradeMap||{}).forEach(([key,item])=>{
+    const r=document.createElement("div"); r.className="slot";
+    const sync=()=>{ syncDraftTextarea(p); renderPreview(); };
+    const legacy=inputCtl(item.label||item.value?.name||key,()=>{}); legacy.disabled=true;
+    r.appendChild(field("旧版/导入标签（只读）",legacy,"g"));
+    const operator=inputCtl(item.operatorLabel||"",value=>{
+      if(value) item.operatorLabel=value; else delete item.operatorLabel;
+      sync();
+    }); operator.maxLength=160; operator.placeholder="留空则沿用旧版/导入标签";
+    r.appendChild(field("操作员显示标签（可选）",operator,"g"));
+    const patchOperatorI18n=(locale,value)=>{
+      const map=Object.assign({},item.operatorLabelI18n||{});
+      if(value) map[locale]=value; else delete map[locale];
+      if(Object.keys(map).length) item.operatorLabelI18n=map; else delete item.operatorLabelI18n;
+      sync();
+    };
+    const operatorEn=inputCtl(item.operatorLabelI18n?.en||"",value=>patchOperatorI18n("en",value)); operatorEn.maxLength=160;
+    const operatorEs=inputCtl(item.operatorLabelI18n?.es||"",value=>patchOperatorI18n("es",value)); operatorEs.maxLength=160;
+    r.appendChild(field("操作员英文标签（可选）",operatorEn,"g"));
+    r.appendChild(field("操作员西语标签（可选）",operatorEs,"g"));
+    const color=document.createElement("input"); color.type="color"; color.value=/^#[0-9a-fA-F]{6}$/.test(item.uiColor||"")?item.uiColor:(/^#[0-9a-fA-F]{6}$/.test(p.uiColor||"")?p.uiColor:"#1989FA");
+    color.oninput=()=>{ item.uiColor=color.value; sync(); };
+    r.appendChild(field("颜色",color));
+    const meta=document.createElement("div"); meta.className="muted"; meta.style.cssText="flex-basis:100%;font-size:11.5px";
+    meta.textContent="key: "+key+" · field: "+(item.field||"未绑定"); r.appendChild(meta); s.appendChild(r);
+  });
+  return s;
+}
+function photoSlotRow(p, arr, i, opts={}){
+  const sl=arr[i]; const r=document.createElement("div"); r.className="slot";
+  r.appendChild(field("后端字段 ID", inputCtl(sl.field||"", v=>{ sl.field=v.trim(); syncDraftTextarea(p); renderPreview(); }), "g"));
+  r.appendChild(field((opts.label||"框名称")+(opts.index?(" "+(i+1)):""), inputCtl(sl.title||sl.field||"", v=>{ sl.title=v; syncDraftTextarea(p); renderPreview(); }), "g"));
+  r.appendChild(field("最少张", numCtl(sl.minPhotos??(opts.minDefault??1),0,v=>{ sl.minPhotos=v; renderPreview(); })));
+  r.appendChild(field("最多张", numCtl(sl.maxPhotos??10,1,v=>{ sl.maxPhotos=v; renderPreview(); })));
+  if(opts.inputSource!==false){
+    r.appendChild(field("取图方式",photoInputSourceCtl(sl.inputSource||"camera",v=>{ sl.inputSource=v; syncDraftTextarea(p); renderPreview(); })));
+  }
+  if(opts.deletable){ const del=document.createElement("button"); del.className="danger"; del.textContent="删";
+    del.onclick=()=>{ arr.splice(i,1); syncDraftTextarea(p); renderPreview(); renderForm(); }; r.appendChild(del); }
+  return r;
+}
+
+function resultPhotosEditor(p){
+  const results=Object.entries(p.gradeMap||{}).map(([key,value])=>(value?.operatorLabel||value?.label||value?.value?.name||key)+"（"+key+"）");
+  const s=sec("照片框",results.length?"此表单的结果选项："+results.join("、")+"。照片框属于当前 profile，不按标签猜测业务分支。":"此表单没有结果选择；照片框仍按 profile 配置展示。");
+  const box=()=>{ const d=document.createElement("div"); d.style.cssText="border:1px dashed var(--line);border-radius:8px;padding:10px 10px 8px;margin:8px 0"; return d; };
+
+  // This writes the exact profile.defaultPhotoOrder field consumed by the App. Do not infer a
+  // default for imported/legacy drafts: publish validation requires the operator to choose one.
+  const orderBox=box(); orderBox.appendChild(h3mini("默认拍照顺序"));
+  const orderHint=mutedLine("选择后会同时更新上方拍照流程预览和高级 JSON；App 按同一字段执行。");
+  orderHint.style.marginBottom="6px"; orderBox.appendChild(orderHint);
+  const orderSelect=document.createElement("select"); orderSelect.dataset.profileField="defaultPhotoOrder";
+  const placeholder=document.createElement("option"); placeholder.value=""; placeholder.textContent="请选择（发布前必选）"; placeholder.disabled=true; orderSelect.appendChild(placeholder);
+  const photoOrderOptions=window.FormPreview?.PHOTO_ORDER_OPTIONS||[];
+  photoOrderOptions.forEach(item=>{ const option=document.createElement("option"); option.value=item.value; option.textContent=item.label+" — "+item.hint; orderSelect.appendChild(option); });
+  orderSelect.value=photoOrderOptions.some(item=>item.value===p.defaultPhotoOrder)?p.defaultPhotoOrder:"";
+  orderSelect.onchange=()=>{
+    if(!photoOrderOptions.some(item=>item.value===orderSelect.value)) return;
+    p.defaultPhotoOrder=orderSelect.value;
+    syncDraftTextarea(p);
+    renderPreview();
+  };
+  orderBox.appendChild(field("拍摄顺序",orderSelect));
+  s.appendChild(orderBox);
+
+  // Required profile photos (v2 photoSlots or legacy uploadFields).
+  const slotMode=Array.isArray(p.photoSlots)&&p.photoSlots.length>0;
+  const arr = slotMode ? p.photoSlots : (Array.isArray(p.uploadFields) ? p.uploadFields : null);
+  const a=box(); a.appendChild(h3mini("必填照片框"));
+  if(!slotMode){
+    p.workflow=p.workflow||{};
+    p.workflow.photos=Object.assign({includeOptionalSlots:false},p.workflow.photos||{});
+    a.appendChild(field("前面 / 后面 / 补充照片统一取图方式",photoInputSourceCtl(p.workflow.photos.inputSource||"camera",value=>{
+      p.workflow.photos.inputSource=value; syncDraftTextarea(p); renderPreview();
+    })));
+  }
+  if(arr && arr.length){ arr.forEach((_,i)=> a.appendChild(photoSlotRow(p, arr, i, {label:"框", index:true, deletable:true,inputSource:slotMode}))); }
+  else a.appendChild(mutedLine("（无必填照片框）"));
+  s.appendChild(a);
+
+  // Optional profile photos.
+  const c=box();
+  c.appendChild(h3mini("可选照片框"));
+  const opt = Array.isArray(p.optionalSlots)?p.optionalSlots:(p.optionalSlots=[]);
+  if(!opt.length) c.appendChild(mutedLine("没有可选框。"));
+  opt.forEach((_,i)=> c.appendChild(photoSlotRow(p, opt, i, {label:"框名称", minDefault:0, deletable:true})));
+  const add=document.createElement("button"); add.className="ghost sm"; add.style.marginTop="6px"; add.textContent="＋ 添加可选照片框";
+  add.onclick=()=>{ opt.push({field:"", title:"可选照片", minPhotos:0, maxPhotos:10, required:false,inputSource:"camera"}); syncDraftTextarea(p); renderPreview(); renderForm(); };
+  c.appendChild(add);
+  c.appendChild(mutedLine("新增后必须填写后端模板已经定义的照片字段 ID；Panel 不会自动编造提交字段。"));
+  s.appendChild(c);
+  return s;
+}
+
+/* ---------- AI ---------- */
+$("aiBtn").onclick = async () => {
+  const instr=$("aiInstr").value.trim(); if(!instr){ $("aiMsg").innerHTML='<span class="err">先用大白话写一句你想怎么改</span>'; return; }
+  const btn=$("aiBtn"), lbl=btn.textContent; btn.disabled=true; btn.textContent="AI 思考中…（通常 30-60 秒，最长约 1.5 分钟，别关页面）"; $("aiMsg").textContent="";
+  try {
+    const body = { template: window._lastTemplate || { field_list:[] }, draft:DRAFT, instructions:instr };
+    const r=await api("/api/ai/draft", { method:"POST", body });
+    const v=r.violations||[];
+    if(v.length){
+      $("aiMsg").innerHTML='<span class="err">⚠ AI 用到了不存在的字段，未应用，请换个说法：\n'+esc(v.join("；"))+'</span>';
+      return;
+    }
+    applyDraft(r.profile);
+    $("aiMsg").innerHTML='<span class="ok">✓ 改好了，看上面的预览对不对</span>';
+    $("aiInstr").value="";
+  } catch (e) { $("aiMsg").innerHTML='<span class="err">AI 失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=lbl; }
+};
+
+/* ---------- advanced JSON + publish ---------- */
+// Live: as you type valid JSON, the preview follows immediately (debounced). We only re-render the
+// PREVIEW here (not the structured editor / textarea) so your cursor in the JSON box isn't disturbed;
+// the structured editor catches up when you click 「用这段 JSON 覆盖上面」 or edit it directly.
+let _jsonLiveTimer=null;
+$("draft").addEventListener("input", ()=>{
+  clearTimeout(_jsonLiveTimer);
+  _jsonLiveTimer=setTimeout(()=>{
+    try { const p=JSON.parse($("draft").value); DRAFT=p; if(hasResults(DRAFT)) DRAFT.graded=true; renderPreview(); $("editMsg").innerHTML='<span class="ok">↑ 预览已跟随 JSON</span>'; }
+    catch { $("editMsg").innerHTML='<span class="muted">JSON 未闭合/格式错，预览暂不更新…</span>'; }
+  }, 400);
+});
+$("applyJsonBtn").onclick = () => {
+  try { applyDraft(JSON.parse($("draft").value)); $("editMsg").innerHTML='<span class="ok">已套用</span>'; }
+  catch (e) { $("editMsg").innerHTML='<span class="err">JSON 格式错：'+esc(e.message)+'</span>'; }
+};
+// Strip editor-only display backups before publishing; submitted values already live in canonical arrays.
+function cleanForPublish(p){
+  const c=JSON.parse(JSON.stringify(p));
+  (c.conditionalFields||[]).forEach(f=>delete f.allValues);
+  (c.operationFields||[]).forEach(f=>delete f.allValues);
+  (c.materialGroups||[]).forEach(g=>delete g._allMaterials);
+  return c;
+}
+$("publishBtn").onclick = async () => {
+  if(!DRAFT){ return; }
+  if(!confirm("确认发布「"+(DRAFT.displayName||DRAFT.id)+"」？\nApp 下次启动会自动更新成这个。")) return;
+  const btn=$("publishBtn"), lbl=btn.textContent; btn.disabled=true; btn.textContent="发布中…"; $("editMsg").textContent="";
+  try {
+    const r=await api("/api/publish", { method:"POST", body:{ baseVersion:CATALOG_VERSION, profiles:[cleanForPublish(DRAFT)], notes:"panel" } });
+    CATALOG_VERSION=r.version;
+    $("editMsg").innerHTML='<span class="ok">✅ 已发布（第 '+r.version+' 版，共 '+r.total+' 个表单）。App 下次启动自动更新。</span>';
+    await loadCatalog();
+  } catch (e) { $("editMsg").innerHTML='<span class="err">发布失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=lbl; }
+};
+
+/* ---------- 全局设置：表单顺序 + 后端 / 结构化通知 ---------- */
+// 顺序编辑在一份本地工作副本上做（打开对话框时从 CATALOG_PROFILES 浅拷贝一次）；▲▼ 交换相邻项，
+// 「保存顺序」把整份重排后的 profiles 数组 POST 给后端。保存成功后 loadCatalog() 刷新。
+let ORDER_WORKING = [];
+let DAILY_STATS_WORKING = [];
+let DAILY_STATS_V2_GROUPS_WORKING = [];
+let DAILY_STATS_V2_FLAT_WORKING = [];
+function renderOrderList(){
+  const box=$("orderList"); box.innerHTML="";
+  if(!ORDER_WORKING.length){ box.innerHTML='<span class="muted">还没有任何表单。</span>'; return; }
+  ORDER_WORKING.forEach((p,i)=>{
+    const el=document.createElement("div"); el.className="item";
+    el.innerHTML='<div class="grow"><b>'+esc(p.displayName||p.id)+'</b> <span class="muted">'+esc(p.id||"")+'</span></div>';
+    const up=document.createElement("button"); up.className="ghost sm"; up.type="button"; up.textContent="▲"; up.disabled=(i===0);
+    up.onclick=()=>{ const a=ORDER_WORKING; [a[i-1],a[i]]=[a[i],a[i-1]]; renderOrderList(); };
+    const dn=document.createElement("button"); dn.className="ghost sm"; dn.type="button"; dn.textContent="▼"; dn.disabled=(i===ORDER_WORKING.length-1);
+    dn.onclick=()=>{ const a=ORDER_WORKING; [a[i+1],a[i]]=[a[i],a[i+1]]; renderOrderList(); };
+    el.appendChild(up); el.appendChild(dn); box.appendChild(el);
+  });
+}
+function dailyStatsAvailableResultKeys(){
+  const keys=[]; const seen=new Set();
+  CATALOG_PROFILES.forEach(profile=>{
+    if(profile?.pickerVisible!==true || !profile.gradeMap || typeof profile.gradeMap!=="object" || Array.isArray(profile.gradeMap)) return;
+    Object.keys(profile.gradeMap).forEach(key=>{ if(!seen.has(key)){ seen.add(key); keys.push(key); } });
+  });
+  return keys;
+}
+function nextDailyStatsGroupId(){
+  const used=new Set(DAILY_STATS_WORKING.map(group=>String(group?.id||"")));
+  let index=1;
+  while(used.has("result-group-"+index)) index++;
+  return "result-group-"+index;
+}
+function renderDailyStatsGroups(){
+  const box=$("dailyStatsGroups"); box.innerHTML="";
+  const available=dailyStatsAvailableResultKeys();
+  const availableSet=new Set(available);
+  if(!DAILY_STATS_WORKING.length){
+    const empty=document.createElement("div"); empty.className="muted";
+    empty.style.cssText="font-size:12px;margin-bottom:8px";
+    empty.textContent="未配置时，App 不启用全表单汇总。"; box.appendChild(empty);
+  }
+  DAILY_STATS_WORKING.forEach((group,index)=>{
+    if(!group.labelI18n || typeof group.labelI18n!=="object" || Array.isArray(group.labelI18n)) group.labelI18n={};
+    if(!Array.isArray(group.resultKeys)) group.resultKeys=[];
+    const card=document.createElement("div"); card.className="slot";
+    const head=document.createElement("div"); head.className="row"; head.style.cssText="flex-basis:100%;width:100%";
+    const name=document.createElement("b"); name.className="g"; name.textContent="汇总组 "+(index+1); head.appendChild(name);
+    const up=document.createElement("button"); up.type="button"; up.className="ghost sm"; up.textContent="▲"; up.disabled=index===0;
+    up.onclick=()=>{ [DAILY_STATS_WORKING[index-1],DAILY_STATS_WORKING[index]]=[DAILY_STATS_WORKING[index],DAILY_STATS_WORKING[index-1]]; renderDailyStatsGroups(); };
+    const down=document.createElement("button"); down.type="button"; down.className="ghost sm"; down.textContent="▼"; down.disabled=index===DAILY_STATS_WORKING.length-1;
+    down.onclick=()=>{ [DAILY_STATS_WORKING[index+1],DAILY_STATS_WORKING[index]]=[DAILY_STATS_WORKING[index],DAILY_STATS_WORKING[index+1]]; renderDailyStatsGroups(); };
+    const remove=document.createElement("button"); remove.type="button"; remove.className="danger sm"; remove.textContent="删除";
+    remove.onclick=()=>{ DAILY_STATS_WORKING.splice(index,1); renderDailyStatsGroups(); };
+    head.appendChild(up); head.appendChild(down); head.appendChild(remove); card.appendChild(head);
+
+    card.appendChild(field("稳定 ID",inputCtl(group.id||"",value=>{ group.id=value; }),"g"));
+    card.appendChild(field("显示标签",inputCtl(group.label||"",value=>{ group.label=value; }),"g"));
+    const color=document.createElement("input"); color.type="color";
+    color.value=/^#[0-9A-Fa-f]{6}$/.test(String(group.uiColor||""))?group.uiColor:"#0F766E";
+    if(!group.uiColor) group.uiColor=color.value;
+    color.oninput=()=>{ group.uiColor=color.value; };
+    card.appendChild(field("颜色",color));
+    card.appendChild(field("英文标签（可选）",inputCtl(group.labelI18n.en||"",value=>{ group.labelI18n.en=value; }),"g"));
+    card.appendChild(field("西语标签（可选）",inputCtl(group.labelI18n.es||"",value=>{ group.labelI18n.es=value; }),"g"));
+
+    const resultWrap=document.createElement("div"); resultWrap.style.cssText="flex-basis:100%;width:100%";
+    const resultLabel=document.createElement("label"); resultLabel.textContent="精确 result key（至少选择一项）"; resultWrap.appendChild(resultLabel);
+    const choices=document.createElement("div"); choices.className="skipmat";
+    const selectedKeys=group.resultKeys.filter(key=>typeof key==="string");
+    const choicesInOrder=available.slice();
+    selectedKeys.forEach(key=>{ if(!choicesInOrder.includes(key)) choicesInOrder.push(key); });
+    if(!choicesInOrder.length){
+      const none=document.createElement("span"); none.className="err"; none.textContent="当前没有显式 pickerVisible:true 且带结果映射的表单。"; choices.appendChild(none);
+    }
+    choicesInOrder.forEach(key=>{
+      const option=document.createElement("label");
+      const checkbox=document.createElement("input"); checkbox.type="checkbox"; checkbox.checked=selectedKeys.includes(key);
+      checkbox.onchange=()=>{
+        if(checkbox.checked){ if(!group.resultKeys.includes(key)) group.resultKeys.push(key); }
+        else group.resultKeys=group.resultKeys.filter(candidate=>candidate!==key);
+      };
+      const text=document.createElement("span"); text.className="mn";
+      text.textContent=key+(availableSet.has(key)?"":"（当前无可见表单声明）"); text.title=key;
+      option.appendChild(checkbox); option.appendChild(text); choices.appendChild(option);
+    });
+    resultWrap.appendChild(choices); card.appendChild(resultWrap); box.appendChild(card);
+  });
+  $("addDailyStatsGroupBtn").disabled=DAILY_STATS_WORKING.length>=16;
+}
+function buildDailyStats(){
+  if(!DAILY_STATS_WORKING.length) return null;
+  if(DAILY_STATS_WORKING.length>16) throw new Error("结果汇总组最多 16 项");
+  const available=new Set(dailyStatsAvailableResultKeys());
+  const ids=new Set(); const assigned=new Set();
+  const groups=DAILY_STATS_WORKING.map((group,index)=>{
+    const id=String(group.id||"").trim(); const label=String(group.label||"").trim();
+    if(!id) throw new Error("汇总组 "+(index+1)+" 的稳定 ID 不能为空");
+    if(id.length>128) throw new Error("汇总组 "+(index+1)+" 的稳定 ID 最长 128 个字符");
+    if(ids.has(id)) throw new Error("汇总组稳定 ID 不能重复："+id); ids.add(id);
+    if(!label) throw new Error("汇总组 "+(index+1)+" 的显示标签不能为空");
+    if(label.length>160) throw new Error("汇总组 "+(index+1)+" 的显示标签最长 160 个字符");
+    const uiColor=String(group.uiColor||"");
+    if(!/^#[0-9A-Fa-f]{6}$/.test(uiColor)) throw new Error("汇总组 "+(index+1)+" 的颜色必须是 #RRGGBB");
+    const resultKeys=(group.resultKeys||[]).filter(key=>typeof key==="string");
+    if(!resultKeys.length) throw new Error("汇总组 "+(index+1)+" 至少选择一个 result key");
+    if(new Set(resultKeys).size!==resultKeys.length) throw new Error("汇总组 "+(index+1)+" 的 result key 不能重复");
+    resultKeys.forEach(key=>{
+      if(assigned.has(key)) throw new Error("result key 不能出现在多个汇总组："+key);
+      if(!available.has(key)) throw new Error("result key 当前没有被可见表单声明："+key);
+      assigned.add(key);
+    });
+    const labelI18n={};
+    for(const locale of ["en","es"]){
+      const value=String(group.labelI18n?.[locale]||"").trim();
+      if(value){ if(value.length>160) throw new Error("汇总组 "+(index+1)+" 的多语言标签最长 160 个字符"); labelI18n[locale]=value; }
+    }
+    return {id,label,...(Object.keys(labelI18n).length?{labelI18n}:{}),uiColor,resultKeys};
+  });
+  return {scope:"all_profiles",groups};
+}
+$("addDailyStatsGroupBtn").onclick=()=>{
+  if(DAILY_STATS_WORKING.length>=16) return;
+  DAILY_STATS_WORKING.push({id:nextDailyStatsGroupId(),label:"",uiColor:"#0F766E",resultKeys:[]});
+  renderDailyStatsGroups();
+};
+
+function dailyStatsV2PairKey(profileId,resultKey){
+  return JSON.stringify([String(profileId||""),String(resultKey||"")]);
+}
+function dailyStatsAlternateEntryPairKey(profileId,entryId){
+  return JSON.stringify([String(profileId||""),String(entryId||"")]);
+}
+function dailyStatsV2AvailableSelectors(){
+  const selectors=[]; const seen=new Set();
+  CATALOG_PROFILES.forEach(profile=>{
+    if(profile?.pickerVisible!==true || !profile.gradeMap || typeof profile.gradeMap!=="object" || Array.isArray(profile.gradeMap)) return;
+    const profileId=String(profile.id||"");
+    if(!profileId) return;
+    const profileLabel=String(profile.displayName||profileId);
+    Object.entries(profile.gradeMap).forEach(([resultKey,entry])=>{
+      const pairKey=dailyStatsV2PairKey(profileId,resultKey);
+      if(seen.has(pairKey)) return; seen.add(pairKey);
+      const resultLabel=String(entry?.operatorLabel||entry?.label||resultKey);
+      selectors.push({profileId,resultKey,profileLabel,resultLabel});
+    });
+  });
+  return selectors;
+}
+function dailyStatsAlternateEntryAvailableSelectors(){
+  const selectors=[]; const seen=new Set();
+  CATALOG_PROFILES.forEach(profile=>{
+    const alternateEntries=profile?.workflow?.alternateEntries;
+    if(profile?.pickerVisible!==true || alternateEntries?.enabled!==true
+        || !Array.isArray(alternateEntries.entries)) return;
+    const profileId=String(profile.id||"");
+    if(!profileId) return;
+    const profileLabel=String(profile.displayName||profileId);
+    alternateEntries.entries.forEach(entry=>{
+      const entryId=String(entry?.id||"");
+      if(!entryId) return;
+      const pairKey=dailyStatsAlternateEntryPairKey(profileId,entryId);
+      if(seen.has(pairKey)) return; seen.add(pairKey);
+      selectors.push({
+        profileId,entryId,profileLabel,
+        entryLabel:String(entry?.title||entryId)
+      });
+    });
+  });
+  return selectors;
+}
+function nextDailyStatsV2ItemId(prefix){
+  const used=new Set([...DAILY_STATS_V2_GROUPS_WORKING,...DAILY_STATS_V2_FLAT_WORKING]
+    .map(item=>String(item?.id||"")));
+  let index=1;
+  while(used.has(prefix+"-"+index)) index++;
+  return prefix+"-"+index;
+}
+function dailyStatsV2SelectorText(selector){
+  if(selector.profileLabel){
+    return selector.profileLabel+" · "+selector.resultLabel
+      +"（"+selector.profileId+" / "+selector.resultKey+"）";
+  }
+  return selector.profileId+" / "+selector.resultKey+"（当前无显式可见表单声明）";
+}
+function dailyStatsAlternateEntrySelectorText(selector){
+  if(selector.profileLabel){
+    return selector.profileLabel+" · "+selector.entryLabel
+      +"（"+selector.profileId+" / "+selector.entryId+"）";
+  }
+  return selector.profileId+" / "+selector.entryId+"（当前无可见独立录入入口声明）";
+}
+function renderDailyStatsV2Items(boxId,items,kind){
+  const box=$(boxId); box.innerHTML="";
+  const available=dailyStatsV2AvailableSelectors();
+  const availableByPair=new Map(available.map(item=>[
+    dailyStatsV2PairKey(item.profileId,item.resultKey),item
+  ]));
+  const availableAlternateEntries=dailyStatsAlternateEntryAvailableSelectors();
+  const availableAlternateEntriesByPair=new Map(availableAlternateEntries.map(item=>[
+    dailyStatsAlternateEntryPairKey(item.profileId,item.entryId),item
+  ]));
+  if(!items.length){
+    const empty=document.createElement("div"); empty.className="muted";
+    empty.style.cssText="font-size:12px;margin-bottom:8px";
+    empty.textContent=kind==="group"
+      ? "未配置 v2 分组时，dailyStatsV2 整体关闭。"
+      : "未配置扁平汇总时，卡片下方不显示附加统计。";
+    box.appendChild(empty);
+  }
+  items.forEach((item,index)=>{
+    if(!item.labelI18n || typeof item.labelI18n!=="object" || Array.isArray(item.labelI18n)) item.labelI18n={};
+    if(!Array.isArray(item.selectors)) item.selectors=[];
+    if(!Array.isArray(item.alternateEntrySelectors)) item.alternateEntrySelectors=[];
+    if(kind==="group" && !Array.isArray(item.legacyResultKeys)) item.legacyResultKeys=[];
+    const card=document.createElement("div"); card.className="slot";
+    const head=document.createElement("div"); head.className="row"; head.style.cssText="flex-basis:100%;width:100%";
+    const name=document.createElement("b"); name.className="g";
+    name.textContent=(kind==="group"?"精确分组 ":"扁平汇总 ")+(index+1); head.appendChild(name);
+    const up=document.createElement("button"); up.type="button"; up.className="ghost sm"; up.textContent="▲"; up.disabled=index===0;
+    up.onclick=()=>{ [items[index-1],items[index]]=[items[index],items[index-1]]; renderDailyStatsV2Editors(); };
+    const down=document.createElement("button"); down.type="button"; down.className="ghost sm"; down.textContent="▼"; down.disabled=index===items.length-1;
+    down.onclick=()=>{ [items[index+1],items[index]]=[items[index],items[index+1]]; renderDailyStatsV2Editors(); };
+    const remove=document.createElement("button"); remove.type="button"; remove.className="danger sm"; remove.textContent="删除";
+    remove.onclick=()=>{ items.splice(index,1); renderDailyStatsV2Editors(); };
+    head.appendChild(up); head.appendChild(down); head.appendChild(remove); card.appendChild(head);
+
+    const idInput=inputCtl(item.id||"",value=>{ item.id=value; }); idInput.maxLength=128;
+    card.appendChild(field("稳定 ID",idInput,"g"));
+    const labelInput=inputCtl(item.label||"",value=>{ item.label=value; }); labelInput.maxLength=160;
+    card.appendChild(field("显示标签",labelInput,"g"));
+    const color=document.createElement("input"); color.type="color";
+    color.value=/^#[0-9A-Fa-f]{6}$/.test(String(item.uiColor||""))?item.uiColor:"#0F766E";
+    if(!item.uiColor) item.uiColor=color.value;
+    color.oninput=()=>{ item.uiColor=color.value; };
+    card.appendChild(field("颜色",color));
+    const enInput=inputCtl(item.labelI18n.en||"",value=>{ item.labelI18n.en=value; }); enInput.maxLength=160;
+    const esInput=inputCtl(item.labelI18n.es||"",value=>{ item.labelI18n.es=value; }); esInput.maxLength=160;
+    card.appendChild(field("英文标签（可选）",enInput,"g"));
+    card.appendChild(field("西语标签（可选）",esInput,"g"));
+
+    const selectorWrap=document.createElement("div"); selectorWrap.style.cssText="flex-basis:100%;width:100%";
+    const selectorLabel=document.createElement("label"); selectorLabel.textContent="精确表单 + result key（至少选择一项）"; selectorWrap.appendChild(selectorLabel);
+    const choices=document.createElement("div"); choices.className="skipmat";
+    const selected=item.selectors
+      .filter(selector=>selector&&typeof selector.profileId==="string"&&typeof selector.resultKey==="string")
+      .map(selector=>({profileId:selector.profileId,resultKey:selector.resultKey}));
+    const selectedPairs=new Set(selected.map(selector=>dailyStatsV2PairKey(selector.profileId,selector.resultKey)));
+    const choicesInOrder=available.slice();
+    selected.forEach(selector=>{
+      const key=dailyStatsV2PairKey(selector.profileId,selector.resultKey);
+      if(!availableByPair.has(key)) choicesInOrder.push(selector);
+    });
+    if(!choicesInOrder.length){
+      const none=document.createElement("span"); none.className="err";
+      none.textContent="当前没有显式 pickerVisible:true 且带结果映射的表单。"; choices.appendChild(none);
+    }
+    choicesInOrder.forEach(selector=>{
+      const pairKey=dailyStatsV2PairKey(selector.profileId,selector.resultKey);
+      const resolved=availableByPair.get(pairKey)||selector;
+      const option=document.createElement("label");
+      const checkbox=document.createElement("input"); checkbox.type="checkbox"; checkbox.checked=selectedPairs.has(pairKey);
+      checkbox.onchange=()=>{
+        if(checkbox.checked){
+          if(!item.selectors.some(candidate=>dailyStatsV2PairKey(candidate?.profileId,candidate?.resultKey)===pairKey)){
+            item.selectors.push({profileId:selector.profileId,resultKey:selector.resultKey});
+          }
+        }else{
+          item.selectors=item.selectors.filter(candidate=>dailyStatsV2PairKey(candidate?.profileId,candidate?.resultKey)!==pairKey);
+          if(kind==="group"){
+            const stillSelected=new Set(item.selectors.map(candidate=>String(candidate?.resultKey||"")));
+            item.legacyResultKeys=item.legacyResultKeys.filter(key=>stillSelected.has(key));
+          }
+        }
+        renderDailyStatsV2Editors();
+      };
+      const text=document.createElement("span"); text.className="mn";
+      text.textContent=dailyStatsV2SelectorText(resolved); text.title=text.textContent;
+      option.appendChild(checkbox); option.appendChild(text); choices.appendChild(option);
+    });
+    selectorWrap.appendChild(choices); card.appendChild(selectorWrap);
+
+    const alternateWrap=document.createElement("div"); alternateWrap.style.cssText="flex-basis:100%;width:100%";
+    const alternateLabel=document.createElement("label");
+    alternateLabel.textContent="独立录入入口（可选）"; alternateWrap.appendChild(alternateLabel);
+    const alternateHelp=document.createElement("div"); alternateHelp.className="muted";
+    alternateHelp.style.cssText="font-size:12px;margin-bottom:5px";
+    alternateHelp.textContent="按来源表单 + 入口精确计数；不会写入 dailyStatsV2 的表单 + result key selector。";
+    alternateWrap.appendChild(alternateHelp);
+    const alternateChoices=document.createElement("div"); alternateChoices.className="skipmat";
+    const selectedAlternateEntries=item.alternateEntrySelectors
+      .filter(selector=>selector&&typeof selector.profileId==="string"&&typeof selector.entryId==="string")
+      .map(selector=>({profileId:selector.profileId,entryId:selector.entryId}));
+    const selectedAlternateEntryPairs=new Set(selectedAlternateEntries.map(selector=>
+      dailyStatsAlternateEntryPairKey(selector.profileId,selector.entryId)));
+    const alternateChoicesInOrder=availableAlternateEntries.slice();
+    selectedAlternateEntries.forEach(selector=>{
+      const key=dailyStatsAlternateEntryPairKey(selector.profileId,selector.entryId);
+      if(!availableAlternateEntriesByPair.has(key)) alternateChoicesInOrder.push(selector);
+    });
+    if(!alternateChoicesInOrder.length){
+      const none=document.createElement("span"); none.className="muted";
+      none.textContent="当前没有可见来源表单启用独立录入入口。"; alternateChoices.appendChild(none);
+    }
+    alternateChoicesInOrder.forEach(selector=>{
+      const pairKey=dailyStatsAlternateEntryPairKey(selector.profileId,selector.entryId);
+      const resolved=availableAlternateEntriesByPair.get(pairKey)||selector;
+      const option=document.createElement("label");
+      const checkbox=document.createElement("input"); checkbox.type="checkbox";
+      checkbox.checked=selectedAlternateEntryPairs.has(pairKey);
+      checkbox.onchange=()=>{
+        if(checkbox.checked){
+          if(!item.alternateEntrySelectors.some(candidate=>
+              dailyStatsAlternateEntryPairKey(candidate?.profileId,candidate?.entryId)===pairKey)){
+            item.alternateEntrySelectors.push({profileId:selector.profileId,entryId:selector.entryId});
+          }
+        }else{
+          item.alternateEntrySelectors=item.alternateEntrySelectors.filter(candidate=>
+            dailyStatsAlternateEntryPairKey(candidate?.profileId,candidate?.entryId)!==pairKey);
+        }
+      };
+      const text=document.createElement("span"); text.className="mn";
+      text.textContent=dailyStatsAlternateEntrySelectorText(resolved); text.title=text.textContent;
+      option.appendChild(checkbox); option.appendChild(text); alternateChoices.appendChild(option);
+    });
+    alternateWrap.appendChild(alternateChoices); card.appendChild(alternateWrap);
+
+    if(kind==="group"){
+      const legacyWrap=document.createElement("div"); legacyWrap.style.cssText="flex-basis:100%;width:100%";
+      const legacyLabel=document.createElement("label");
+      legacyLabel.textContent="旧版未分表单计数 key（可选，仅用于已存在的 legacyResults）"; legacyWrap.appendChild(legacyLabel);
+      const legacyHelp=document.createElement("div"); legacyHelp.className="muted";
+      legacyHelp.style.cssText="font-size:12px;margin-bottom:5px";
+      legacyHelp.textContent="只能从本组已选 selector 的 result key 中明确选择；不选择时不会猜旧计数归属。";
+      legacyWrap.appendChild(legacyHelp);
+      const legacyChoices=document.createElement("div"); legacyChoices.className="skipmat";
+      const selectorKeys=[]; const selectorKeySet=new Set();
+      item.selectors.forEach(selector=>{
+        const key=String(selector?.resultKey||"");
+        if(key&&!selectorKeySet.has(key)){ selectorKeySet.add(key); selectorKeys.push(key); }
+      });
+      const selectedLegacy=new Set(item.legacyResultKeys.filter(key=>typeof key==="string"));
+      selectedLegacy.forEach(key=>{ if(!selectorKeySet.has(key)) selectorKeys.push(key); });
+      if(!selectorKeys.length){
+        const none=document.createElement("span"); none.className="muted"; none.textContent="先选择至少一个精确 selector。"; legacyChoices.appendChild(none);
+      }
+      selectorKeys.forEach(key=>{
+        const option=document.createElement("label");
+        const checkbox=document.createElement("input"); checkbox.type="checkbox"; checkbox.checked=selectedLegacy.has(key);
+        checkbox.onchange=()=>{
+          if(checkbox.checked){ if(!item.legacyResultKeys.includes(key)) item.legacyResultKeys.push(key); }
+          else item.legacyResultKeys=item.legacyResultKeys.filter(candidate=>candidate!==key);
+        };
+        const text=document.createElement("span"); text.className="mn";
+        text.textContent=key+(selectorKeySet.has(key)?"":"（当前不属于本组 selector）"); text.title=key;
+        option.appendChild(checkbox); option.appendChild(text); legacyChoices.appendChild(option);
+      });
+      legacyWrap.appendChild(legacyChoices); card.appendChild(legacyWrap);
+    }
+    box.appendChild(card);
+  });
+}
+function renderDailyStatsV2Editors(){
+  renderDailyStatsV2Items("dailyStatsV2Groups",DAILY_STATS_V2_GROUPS_WORKING,"group");
+  renderDailyStatsV2Items("dailyStatsV2FlatSummaries",DAILY_STATS_V2_FLAT_WORKING,"flat");
+  $("addDailyStatsV2GroupBtn").disabled=DAILY_STATS_V2_GROUPS_WORKING.length>=16;
+  $("addDailyStatsV2FlatBtn").disabled=DAILY_STATS_V2_GROUPS_WORKING.length===0
+    || DAILY_STATS_V2_FLAT_WORKING.length>=8;
+}
+function buildDailyStatsV2(alternateOnlyFlatIds=new Set()){
+  if(!DAILY_STATS_V2_GROUPS_WORKING.length&&!DAILY_STATS_V2_FLAT_WORKING.length) return null;
+  if(!DAILY_STATS_V2_GROUPS_WORKING.length) throw new Error("dailyStatsV2 至少需要一个精确分组");
+  if(DAILY_STATS_V2_GROUPS_WORKING.length>16) throw new Error("dailyStatsV2 精确分组最多 16 项");
+  if(DAILY_STATS_V2_FLAT_WORKING.length>8) throw new Error("dailyStatsV2 扁平汇总最多 8 项");
+  const available=new Set(dailyStatsV2AvailableSelectors().map(selector=>
+    dailyStatsV2PairKey(selector.profileId,selector.resultKey)));
+  const ids=new Set(); const groupPairs=new Set(); const flatPairs=new Set(); const legacyKeys=new Set();
+  const buildItem=(item,index,kind)=>{
+    const title=(kind==="group"?"精确分组 ":"扁平汇总 ")+(index+1);
+    const id=String(item.id||"").trim(); const label=String(item.label||"").trim();
+    if(!id) throw new Error(title+" 的稳定 ID 不能为空");
+    if(id.length>128) throw new Error(title+" 的稳定 ID 最长 128 个字符");
+    if(ids.has(id)) throw new Error("dailyStatsV2 的稳定 ID 不能重复："+id); ids.add(id);
+    if(!label) throw new Error(title+" 的显示标签不能为空");
+    if(label.length>160) throw new Error(title+" 的显示标签最长 160 个字符");
+    const uiColor=String(item.uiColor||"");
+    if(!/^#[0-9A-Fa-f]{6}$/.test(uiColor)) throw new Error(title+" 的颜色必须是 #RRGGBB");
+    if(!Array.isArray(item.selectors)) throw new Error(title+" 的 selectors 必须是数组");
+    if(!item.selectors.length&&(kind==="group"||!alternateOnlyFlatIds.has(id))){
+      throw new Error(title+(kind==="group"
+        ?" 至少选择一个表单 + result key"
+        :" 至少选择一个表单 + result key 或独立录入入口"));
+    }
+    if(item.selectors.length>512) throw new Error(title+" 最多选择 512 个 selector");
+    const localPairs=new Set(); const selectorResultKeys=new Set();
+    const selectors=item.selectors.map((selector,selectorIndex)=>{
+      const profileId=String(selector?.profileId||""); const resultKey=String(selector?.resultKey||"");
+      if(!profileId||profileId!==profileId.trim()||profileId.length>256) throw new Error(title+" 的 selector "+(selectorIndex+1)+" 表单 ID 无效");
+      if(!resultKey||resultKey!==resultKey.trim()||resultKey.length>256) throw new Error(title+" 的 selector "+(selectorIndex+1)+" result key 无效");
+      const pair=dailyStatsV2PairKey(profileId,resultKey);
+      if(localPairs.has(pair)) throw new Error(title+" 不能重复选择同一个表单 + result key"); localPairs.add(pair);
+      if(!available.has(pair)) throw new Error(title+" 包含当前无显式可见表单声明的 selector："+profileId+" / "+resultKey);
+      const owners=kind==="group"?groupPairs:flatPairs;
+      if(owners.has(pair)) throw new Error((kind==="group"?"精确分组":"扁平汇总")+"之间不能重复选择："+profileId+" / "+resultKey);
+      owners.add(pair); selectorResultKeys.add(resultKey);
+      return {profileId,resultKey};
+    });
+    const labelI18n={};
+    for(const locale of ["en","es"]){
+      const value=String(item.labelI18n?.[locale]||"").trim();
+      if(value){ if(value.length>160) throw new Error(title+" 的多语言标签最长 160 个字符"); labelI18n[locale]=value; }
+    }
+    const built={id,label,...(Object.keys(labelI18n).length?{labelI18n}:{}),uiColor,selectors};
+    if(kind==="group"){
+      const rawLegacy=Array.isArray(item.legacyResultKeys)?item.legacyResultKeys:[];
+      if(rawLegacy.length>128) throw new Error(title+" 的旧版计数 key 最多 128 项");
+      const localLegacy=new Set(); const cleaned=[];
+      rawLegacy.forEach((raw,keyIndex)=>{
+        const key=String(raw||"");
+        if(!key||key!==key.trim()||key.length>256) throw new Error(title+" 的旧版计数 key "+(keyIndex+1)+" 无效");
+        if(localLegacy.has(key)) throw new Error(title+" 的旧版计数 key 不能重复："+key); localLegacy.add(key);
+        if(legacyKeys.has(key)) throw new Error("旧版计数 key 不能出现在多个精确分组："+key); legacyKeys.add(key);
+        if(!selectorResultKeys.has(key)) throw new Error(title+" 的旧版计数 key 必须同时出现在本组 selector 中："+key);
+        cleaned.push(key);
+      });
+      if(cleaned.length) built.legacyResultKeys=cleaned;
+    }
+    return built;
+  };
+  return {
+    version:2,
+    scope:"all_profiles",
+    groups:DAILY_STATS_V2_GROUPS_WORKING.map((item,index)=>buildItem(item,index,"group")),
+    flatSummaries:DAILY_STATS_V2_FLAT_WORKING.map((item,index)=>buildItem(item,index,"flat"))
+  };
+}
+function mergeDailyStatsAlternateEntrySelectors(items,storedItems){
+  const storedById=new Map();
+  if(Array.isArray(storedItems)){
+    storedItems.forEach(item=>{
+      const id=String(item?.id||"");
+      if(id&&!storedById.has(id)&&Array.isArray(item?.selectors)) storedById.set(id,item.selectors);
+    });
+  }
+  items.forEach(item=>{
+    const stored=storedById.get(String(item?.id||""));
+    item.alternateEntrySelectors=stored
+      ? stored.map(selector=>({profileId:selector?.profileId,entryId:selector?.entryId})) : [];
+  });
+}
+function buildDailyStatsAlternateEntries(){
+  const available=new Set(dailyStatsAlternateEntryAvailableSelectors().map(selector=>
+    dailyStatsAlternateEntryPairKey(selector.profileId,selector.entryId)));
+  const buildCollection=(items,kind)=>{
+    const assigned=new Set();
+    const built=[];
+    items.forEach((item,index)=>{
+      const raw=Array.isArray(item.alternateEntrySelectors)?item.alternateEntrySelectors:[];
+      if(!raw.length) return;
+      const title=(kind==="group"?"精确分组 ":"扁平汇总 ")+(index+1);
+      const id=String(item.id||"").trim();
+      if(!id) throw new Error(title+" 的稳定 ID 不能为空，无法关联独立录入统计");
+      if(raw.length>512) throw new Error(title+" 最多选择 512 个独立录入入口");
+      const local=new Set();
+      const selectors=raw.map((selector,selectorIndex)=>{
+        const profileId=String(selector?.profileId||"");
+        const entryId=String(selector?.entryId||"");
+        if(!profileId||profileId!==profileId.trim()||profileId.length>256){
+          throw new Error(title+" 的独立录入 selector "+(selectorIndex+1)+" 表单 ID 无效");
+        }
+        if(!entryId||entryId!==entryId.trim()||entryId.length>256){
+          throw new Error(title+" 的独立录入 selector "+(selectorIndex+1)+" 入口 ID 无效");
+        }
+        const pair=dailyStatsAlternateEntryPairKey(profileId,entryId);
+        if(local.has(pair)) throw new Error(title+" 不能重复选择同一个独立录入入口");
+        local.add(pair);
+        if(!available.has(pair)){
+          throw new Error(title+" 包含当前无可见来源表单声明的独立录入入口："+profileId+" / "+entryId);
+        }
+        if(assigned.has(pair)){
+          throw new Error((kind==="group"?"精确分组":"扁平汇总")
+            +"之间不能重复选择独立录入入口："+profileId+" / "+entryId);
+        }
+        assigned.add(pair);
+        return {profileId,entryId};
+      });
+      built.push({id,selectors});
+    });
+    return built;
+  };
+  const groups=buildCollection(DAILY_STATS_V2_GROUPS_WORKING,"group");
+  const flatSummaries=buildCollection(DAILY_STATS_V2_FLAT_WORKING,"flat");
+  if(!groups.length&&!flatSummaries.length) return null;
+  return {version:1,scope:"all_profiles",groups,flatSummaries};
+}
+$("addDailyStatsV2GroupBtn").onclick=()=>{
+  if(DAILY_STATS_V2_GROUPS_WORKING.length>=16) return;
+  DAILY_STATS_V2_GROUPS_WORKING.push({
+    id:nextDailyStatsV2ItemId("exact-group"),label:"",uiColor:"#0F766E",selectors:[]
+  });
+  renderDailyStatsV2Editors();
+};
+$("addDailyStatsV2FlatBtn").onclick=()=>{
+  if(!DAILY_STATS_V2_GROUPS_WORKING.length||DAILY_STATS_V2_FLAT_WORKING.length>=8) return;
+  DAILY_STATS_V2_FLAT_WORKING.push({
+    id:nextDailyStatsV2ItemId("flat-summary"),label:"",uiColor:"#64748B",selectors:[]
+  });
+  renderDailyStatsV2Editors();
+};
+function applyDailyStatsToLocalSettings(dailyStats){
+  if(dailyStats) CATALOG_SETTINGS.dailyStats=dailyStats;
+  else delete CATALOG_SETTINGS.dailyStats;
+}
+function applyDailyStatsV2ToLocalSettings(dailyStatsV2){
+  if(dailyStatsV2) CATALOG_SETTINGS.dailyStatsV2=dailyStatsV2;
+  else delete CATALOG_SETTINGS.dailyStatsV2;
+}
+function applyDailyStatsAlternateEntriesToLocalSettings(dailyStatsAlternateEntries){
+  if(dailyStatsAlternateEntries) CATALOG_SETTINGS.dailyStatsAlternateEntries=dailyStatsAlternateEntries;
+  else delete CATALOG_SETTINGS.dailyStatsAlternateEntries;
+}
+$("saveDailyStatsBtn").onclick=async()=>{
+  let dailyStats;
+  try { dailyStats=buildDailyStats(); }
+  catch(e){ $("dailyStatsMsg").innerHTML='<span class="err">'+esc(e.message)+'</span>'; return; }
+  const btn=$("saveDailyStatsBtn"),label=btn.textContent; btn.disabled=true; btn.textContent="保存中…"; $("dailyStatsMsg").textContent="";
+  try {
+    const saved=await api("/api/settings",{method:"POST",body:{baseVersion:CATALOG_VERSION,dailyStats}});
+    CATALOG_VERSION=saved.version; applyDailyStatsToLocalSettings(dailyStats);
+    $("dailyStatsMsg").innerHTML='<span class="ok">✅ 已保存</span>';
+  } catch(e){ $("dailyStatsMsg").innerHTML='<span class="err">保存失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=label; }
+};
+$("saveDailyStatsV2Btn").onclick=async()=>{
+  let dailyStatsV2,dailyStatsAlternateEntries;
+  try {
+    dailyStatsAlternateEntries=buildDailyStatsAlternateEntries();
+    const alternateOnlyFlatIds=new Set(
+      (dailyStatsAlternateEntries?.flatSummaries||[]).map(item=>item.id));
+    dailyStatsV2=buildDailyStatsV2(alternateOnlyFlatIds);
+  }
+  catch(e){ $("dailyStatsV2Msg").innerHTML='<span class="err">'+esc(e.message)+'</span>'; return; }
+  const btn=$("saveDailyStatsV2Btn"),label=btn.textContent; btn.disabled=true; btn.textContent="保存中…"; $("dailyStatsV2Msg").textContent="";
+  try {
+    const saved=await api("/api/settings",{method:"POST",body:{baseVersion:CATALOG_VERSION,dailyStatsV2,dailyStatsAlternateEntries}});
+    CATALOG_VERSION=saved.version; applyDailyStatsV2ToLocalSettings(dailyStatsV2);
+    applyDailyStatsAlternateEntriesToLocalSettings(dailyStatsAlternateEntries);
+    $("dailyStatsV2Msg").innerHTML='<span class="ok">✅ 已保存</span>';
+  } catch(e){ $("dailyStatsV2Msg").innerHTML='<span class="err">保存失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=label; }
+};
+function openGlobalSettings(){
+  ORDER_WORKING = CATALOG_PROFILES.slice(); // 浅拷贝：只重排引用，profile 对象不改
+  renderOrderList();
+  $("orderMsg").textContent=""; $("notifyMsg").textContent=""; $("dailyStatsMsg").textContent=""; $("dailyStatsV2Msg").textContent="";
+  $("notifyWebhookInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.notifyWebhook) || "";
+  const notificationAdapter = (CATALOG_SETTINGS && CATALOG_SETTINGS.notificationAdapter) || null;
+  $("notificationAdapterInput").value = notificationAdapter ? JSON.stringify(notificationAdapter, null, 2) : "";
+  $("notificationsEnabledInput").checked = !!notificationAdapter
+    && CATALOG_SETTINGS?.notificationsEnabled !== false;
+  $("diagnosticsEnabledInput").checked = !!(CATALOG_SETTINGS?.diagnosticsPolicy?.enabled);
+  $("backendApiBaseInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.backendApiBase) || "";
+  $("brandInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.brand) || "";
+  // Flat coordinates remain authoritative for the old App and are also the repair source when a
+  // stored structured value is malformed. Saving writes an exact v1 duplicate.
+  $("updateOwnerInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.updateOwner) || "";
+  $("updateRepoInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.updateRepo) || "";
+  $("minAppVersionCodeInput").value = Number.isInteger(CATALOG_SETTINGS && CATALOG_SETTINGS.minAppVersionCode)
+    ? CATALOG_SETTINGS.minAppVersionCode : 0;
+  $("webOriginInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.webOrigin) || "";
+  $("webRefererInput").value = (CATALOG_SETTINGS && CATALOG_SETTINGS.webReferer) || "";
+  const ep = (CATALOG_SETTINGS && CATALOG_SETTINGS.endpoints) || {};
+  $("endpointsInput").value = (ep && Object.keys(ep).length) ? JSON.stringify(ep, null, 2) : "";
+  const adapter = (CATALOG_SETTINGS && CATALOG_SETTINGS.backendAdapter) || BACKEND_ADAPTER || {};
+  $("backendAdapterInput").value = (adapter && Object.keys(adapter).length) ? JSON.stringify(adapter, null, 2) : "";
+  const invalidCodes = Array.isArray(adapter?.auth?.sessionInvalidCodes)
+    ? adapter.auth.sessionInvalidCodes
+    : (Array.isArray(CATALOG_SETTINGS && CATALOG_SETTINGS.sessionInvalidCodes) ? CATALOG_SETTINGS.sessionInvalidCodes : []);
+  const invalidMessages = Array.isArray(adapter?.auth?.sessionInvalidMessagePatterns)
+    ? adapter.auth.sessionInvalidMessagePatterns
+    : (Array.isArray(CATALOG_SETTINGS && CATALOG_SETTINGS.sessionInvalidMessagePatterns) ? CATALOG_SETTINGS.sessionInvalidMessagePatterns : []);
+  $("sessionInvalidCodesInput").value = invalidCodes.length ? JSON.stringify(invalidCodes, null, 2) : "";
+  $("sessionInvalidMessagesInput").value = invalidMessages.length ? JSON.stringify(invalidMessages, null, 2) : "";
+  const dailyStats=CATALOG_SETTINGS?.dailyStats;
+  DAILY_STATS_WORKING=dailyStats?.scope==="all_profiles"&&Array.isArray(dailyStats.groups)
+    ? JSON.parse(JSON.stringify(dailyStats.groups)) : [];
+  renderDailyStatsGroups();
+  const dailyStatsV2=CATALOG_SETTINGS?.dailyStatsV2;
+  DAILY_STATS_V2_GROUPS_WORKING=dailyStatsV2?.version===2
+      &&dailyStatsV2?.scope==="all_profiles"&&Array.isArray(dailyStatsV2.groups)
+    ? JSON.parse(JSON.stringify(dailyStatsV2.groups)) : [];
+  DAILY_STATS_V2_FLAT_WORKING=dailyStatsV2?.version===2
+      &&dailyStatsV2?.scope==="all_profiles"&&Array.isArray(dailyStatsV2.flatSummaries)
+    ? JSON.parse(JSON.stringify(dailyStatsV2.flatSummaries)) : [];
+  const dailyStatsAlternateEntries=CATALOG_SETTINGS?.dailyStatsAlternateEntries;
+  const hasDailyStatsAlternateEntries=dailyStatsAlternateEntries?.version===1
+      &&dailyStatsAlternateEntries?.scope==="all_profiles";
+  mergeDailyStatsAlternateEntrySelectors(DAILY_STATS_V2_GROUPS_WORKING,
+    hasDailyStatsAlternateEntries?dailyStatsAlternateEntries.groups:[]);
+  mergeDailyStatsAlternateEntrySelectors(DAILY_STATS_V2_FLAT_WORKING,
+    hasDailyStatsAlternateEntries?dailyStatsAlternateEntries.flatSummaries:[]);
+  renderDailyStatsV2Editors();
+  const dlg=$("globalSettingsDlg");
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
+}
+function closeGlobalSettings(){ const dlg=$("globalSettingsDlg"); if(dlg.close) dlg.close(); else dlg.removeAttribute("open"); }
+$("globalSettingsBtn").onclick = openGlobalSettings;
+$("globalSettingsClose").onclick = closeGlobalSettings;
+$("saveOrderBtn").onclick = async () => {
+  const btn=$("saveOrderBtn"), lbl=btn.textContent; btn.disabled=true; btn.textContent="保存中…"; $("orderMsg").textContent="";
+  try {
+    await api("/api/settings", { method:"POST", body:{ baseVersion:CATALOG_VERSION, profiles: ORDER_WORKING } });
+    $("orderMsg").innerHTML='<span class="ok">✅ 顺序已保存</span>';
+    await loadCatalog();
+    ORDER_WORKING = CATALOG_PROFILES.slice(); renderOrderList();
+  } catch (e) { $("orderMsg").innerHTML='<span class="err">保存失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=lbl; }
+};
+function parseSettingsArray(inputId, label, allowNumbers) {
+  const raw=$(inputId).value.trim();
+  if (!raw) return [];
+  let values;
+  try { values=JSON.parse(raw); }
+  catch (e) { throw new Error(label+" JSON 解析失败："+e.message); }
+  if (!Array.isArray(values)) throw new Error(label+"必须是 JSON 数组");
+  values.forEach((value, i) => {
+    const validType = typeof value==="string" || (allowNumbers && typeof value==="number" && Number.isFinite(value));
+    if (!validType || (typeof value==="string" && !value.trim())) {
+      throw new Error(label+"["+i+"] 必须是非空"+(allowNumbers?"字符串或数字":"字符串"));
+    }
+  });
+  return values;
+}
+function parseSettingsObject(inputId, label, { required=false } = {}) {
+  const raw=$(inputId).value.trim();
+  if (!raw) {
+    if (required) throw new Error(label+"不能为空");
+    return {};
+  }
+  let value;
+  try { value=JSON.parse(raw); }
+  catch (e) { throw new Error(label+" JSON 解析失败："+e.message); }
+  if (typeof value!=="object" || value===null || Array.isArray(value)) throw new Error(label+"必须是 JSON 对象");
+  return value;
+}
+function buildUpdateSource(owner, repo) {
+  if (!owner && !repo) return null;
+  if (!owner || !repo) throw new Error("配置更新源时 Owner 和 Repo 必须同时填写");
+  return {version:1, owner, repo};
+}
+$("saveNotifyBtn").onclick = async () => {
+  const notifyWebhook=$("notifyWebhookInput").value.trim();
+  const notificationsEnabled=$("notificationsEnabledInput").checked;
+  const diagnosticsPolicy={enabled:$("diagnosticsEnabledInput").checked};
+  const backendApiBase=$("backendApiBaseInput").value.trim();
+  const brand=$("brandInput").value.trim();
+  const updateOwner=$("updateOwnerInput").value.trim();
+  const updateRepo=$("updateRepoInput").value.trim();
+  const minAppVersionCode=Number($("minAppVersionCodeInput").value);
+  const webOrigin=$("webOriginInput").value.trim();
+  const webReferer=$("webRefererInput").value.trim();
+  // The endpoints textarea is only the legacy flat override. Blank = {}; the complete structured
+  // backendAdapter remains required because the App has no deployment endpoint defaults.
+  // A bad JSON (or a non-object) aborts the save with an inline error — never POST a malformed body.
+  let endpoints, backendAdapter, notificationAdapter, sessionInvalidCodes, sessionInvalidMessagePatterns, updateSource, dailyStats, dailyStatsV2, dailyStatsAlternateEntries;
+  try {
+    if(!Number.isInteger(minAppVersionCode) || minAppVersionCode<0) throw new Error("最低 App versionCode 必须是非负整数");
+    endpoints=parseSettingsObject("endpointsInput", "旧版接口路径");
+    backendAdapter=parseSettingsObject("backendAdapterInput", "后端适配器", { required:true });
+    notificationAdapter=parseSettingsObject("notificationAdapterInput", "通知适配器");
+    if(!Object.keys(notificationAdapter).length) notificationAdapter=null;
+    sessionInvalidCodes=parseSettingsArray("sessionInvalidCodesInput", "会话失效业务码", true);
+    sessionInvalidMessagePatterns=parseSettingsArray("sessionInvalidMessagesInput", "会话失效文案特征", false);
+    backendAdapter.auth=Object.assign({},backendAdapter.auth||{}, { sessionInvalidCodes, sessionInvalidMessagePatterns });
+    updateSource=buildUpdateSource(updateOwner, updateRepo);
+    dailyStats=buildDailyStats();
+    dailyStatsAlternateEntries=buildDailyStatsAlternateEntries();
+    const alternateOnlyFlatIds=new Set(
+      (dailyStatsAlternateEntries?.flatSummaries||[]).map(item=>item.id));
+    dailyStatsV2=buildDailyStatsV2(alternateOnlyFlatIds);
+  } catch (e) {
+    $("notifyMsg").innerHTML='<span class="err">'+esc(e.message)+'</span>'; return;
+  }
+  const btn=$("saveNotifyBtn"), lbl=btn.textContent; btn.disabled=true; btn.textContent="保存中…"; $("notifyMsg").textContent="";
+  try {
+    const saved=await api("/api/settings", { method:"POST", body:{ baseVersion:CATALOG_VERSION, notificationsEnabled, notificationAdapter, diagnosticsPolicy, dailyStats, dailyStatsV2, dailyStatsAlternateEntries, notifyWebhook, backendApiBase, brand, updateOwner, updateRepo, updateSource, minAppVersionCode, webOrigin, webReferer, endpoints, backendAdapter, sessionInvalidCodes, sessionInvalidMessagePatterns } });
+    CATALOG_VERSION=saved.version;
+    CATALOG_SETTINGS = Object.assign({}, CATALOG_SETTINGS, { notificationsEnabled, notificationAdapter, diagnosticsPolicy, notifyWebhook, backendApiBase, brand, updateOwner, updateRepo, updateSource, minAppVersionCode, webOrigin, webReferer, endpoints, backendAdapter, sessionInvalidCodes, sessionInvalidMessagePatterns });
+    applyDailyStatsToLocalSettings(dailyStats);
+    applyDailyStatsV2ToLocalSettings(dailyStatsV2);
+    applyDailyStatsAlternateEntriesToLocalSettings(dailyStatsAlternateEntries);
+    BACKEND_ADAPTER = backendAdapter;
+    BACKEND_CLIENT = window.BackendClient.createBackendClient(BACKEND_ADAPTER, { fingerprint:FP });
+    $("notifyMsg").innerHTML='<span class="ok">✅ 已保存</span>';
+  } catch (e) { $("notifyMsg").innerHTML='<span class="err">保存失败：'+esc(e.message)+'</span>'; }
+  finally { btn.disabled=false; btn.textContent=lbl; }
+};
+
+let PANEL_INITIALIZED=false;
+async function initializePanel(){
+  if(PANEL_INITIALIZED || !window.BackendClient) return;
+  PANEL_INITIALIZED=true;
+  try {
+    const config=await api("/api/panel-config", { auth:false });
+    BACKEND_ADAPTER=config.backendAdapter;
+    BACKEND_CLIENT=window.BackendClient.createBackendClient(BACKEND_ADAPTER, { fingerprint:FP });
+    $("loginBtn").disabled=false; $("tokenBtn").disabled=false;
+    await restoreSession();
+  } catch(e) {
+    PANEL_INITIALIZED=false;
+    $("loginCard").classList.remove("hide");
+    $("loginBtn").disabled=true; $("tokenBtn").disabled=true;
+    $("loginErr").textContent="面板配置错误："+e.message+"\n请先在 Cloudflare 配置完整的 BACKEND_ADAPTER_JSON，再重新部署。";
+  }
+}
+if(window.BackendClient) initializePanel();
+else window.addEventListener("backend-client-ready", initializePanel, { once:true });
+</script>
+</body>
+</html>

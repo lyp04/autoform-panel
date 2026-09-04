@@ -1,0 +1,9 @@
+data/
+config/env
+test.env
+node_modules/
+backup/*.tgz
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.r2meta.json

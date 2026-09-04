@@ -1,0 +1,14 @@
+{
+  "name": "autoform-panel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend-gated panel for authoring form profiles and publishing them to a catalog, served as a native Node HTTP server.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

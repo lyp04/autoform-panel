@@ -1,0 +1,24 @@
+[Unit]
+Description=AutoForm Kit panel (anker.besender.lyp04.com)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=autoform-panel
+Group=autoform-panel
+WorkingDirectory=/opt/autoform-panel
+Environment=AUTOFORM_ENV_FILE=/opt/autoform-panel/config/env
+ExecStart=/usr/bin/node server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/autoform-panel/data
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
