@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "parentStateSha256": null,
+  "files": {
+    "form-profiles.json": "{\n  \"schemaVersion\": 2,\n  \"version\": 1,\n  \"profiles\": []\n}\n",
+    "manifest.json": "{\n  \"schemaVersion\": 2,\n  \"version\": 1,\n  \"sha256\": \"fbe77cab352c8dd5b5cc578713d3116a2272b54a054c3bfe022c465efae57d01\",\n  \"profilesUrl\": \"https://panel.example.com/catalog/form-profiles.json\",\n  \"minAppVersionCode\": 0,\n  \"updatedAt\": \"2026-01-01T00:00:00.000Z\",\n  \"notes\": \"initial empty catalog\"\n}\n",
+    "panel-settings.json": null
+  }
+}
