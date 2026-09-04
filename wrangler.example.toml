@@ -55,7 +55,7 @@ GITHUB_REPO = "your-name/your-catalog-repo"
 PUBLIC_URL = "https://panel.example.invalid"
 # Comma-separated exact Android applicationId allow-list. The download issuer must request one of
 # these values, and must use the same value for both the custom URI scheme and Intent package.
-APP_PAIR_APPLICATION_IDS = "com.example.app"
+APP_PAIR_APPLICATION_IDS = "com.autoformkit.app"
 # Absolute ticket lifetime in seconds. The Worker accepts 60..600 and defaults to 300.
 APP_PAIR_TTL_SECONDS = "300"
 # Optional AI is any OpenAI-compatible endpoint; replace both fictional values in wrangler.local.toml.

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import worker, { AppPairingTicketStore } from "../src/worker.js";
 
 const PANEL_ORIGIN = "https://panel.test.invalid";
-const APPLICATION_ID = "com.example.app";
+const APPLICATION_ID = "com.autoformkit.app";
 const ACCESS_KEY = "sample-panel-read-key-2026";
 const ISSUER_KEY = "sample-pairing-issuer-secret-32-characters";
 const CLIENT_DIGEST = "a".repeat(64);
