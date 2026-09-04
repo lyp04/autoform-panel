@@ -1,5 +1,9 @@
 # Autoform-Panel
 
+![ci](https://github.com/your-org/autoform-panel/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/badge/license-MIT-blue.svg)
+![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)
+
 Self-hosted deployment of the Autoform panel: a backend-gated tool for authoring form profiles and
 publishing them as a versioned catalog that a mobile app reads. It also issues the one-time tickets
 the app uses to pair with the catalog.
