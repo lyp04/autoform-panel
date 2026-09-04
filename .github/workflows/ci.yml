@@ -10,15 +10,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Syntax check
         run: |
           for f in $(git ls-files '*.mjs' '*.js'); do node --check "$f"; done
+
+      - name: Tests
+        run: node --test test/*.test.js
+
+      # api/ and test/ are generated from autoform-kit, which owns the panel core.
+      # Anything edited here by hand instead of upstream shows up as drift.
+      - name: Panel core matches autoform-kit
+        run: |
+          git clone --quiet https://github.com/lyp04/autoform-kit /tmp/kit
+          git -C /tmp/kit checkout --quiet "$(cat SOURCE_COMMIT)"
+          node tools/sync-from-kit.mjs --kit /tmp/kit --check
+
       - name: Smoke test (config-only deploy)
         run: |
           cp config/env.example config/env
           RK=$(head -c24 /dev/urandom | base64 | tr -d /+=)
           IK=$(head -c32 /dev/urandom | base64 | tr -d /+=)
-          node -e '\''const fs=require("fs");const a=JSON.parse(fs.readFileSync("config/backend-adapter.example.json","utf8"));a.baseUrl="https://api.ci.internal/api";fs.appendFileSync("config/env","\nBACKEND_ADAPTER_JSON="+JSON.stringify(a)+"\n")'\''
+          node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync("config/backend-adapter.example.json","utf8"));a.baseUrl="https://api.ci.internal/api";fs.appendFileSync("config/env","\nBACKEND_ADAPTER_JSON="+JSON.stringify(a)+"\n")'
           sed -i -e "s#^LISTEN_PORT=.*#LISTEN_PORT=18799#" -e "s#^PUBLIC_URL=.*#PUBLIC_URL=https://ci.example.net#" \
                  -e "s#^CATALOG_READ_KEY=.*#CATALOG_READ_KEY=$RK#" -e "s#^APP_PAIR_ISSUER_KEY=.*#APP_PAIR_ISSUER_KEY=$IK#" config/env
           AUTOFORM_ENV_FILE=$PWD/config/env node server.mjs & echo $! > /tmp/pid

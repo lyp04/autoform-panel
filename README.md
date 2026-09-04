@@ -15,6 +15,23 @@ the host around it differs.
   dependencies (it uses `node:sqlite`, `node:crypto`, `node:http`).
 - **`worker`** — the Cloudflare Workers deployment. See that branch's README.
 
+## Where the code comes from
+
+`api/` and `test/` are generated from [autoform-kit](https://github.com/lyp04/autoform-kit), which is
+the source of truth for the panel itself. Only the host around it — `server.mjs`, `stores/`,
+`config/`, `nginx/`, `backup/` — is maintained in this repository.
+
+To change the panel, change it in the kit, then resync here:
+
+```sh
+node tools/sync-from-kit.mjs --kit ../autoform-kit   # writes api/, test/, config/*.example.json
+git diff                                             # review, then commit
+```
+
+`SOURCE_COMMIT` pins the upstream commit this repo is synced to, and CI runs the same script with
+`--check` against it — so editing `api/` by hand shows up as drift instead of silently forking.
+Ten of the kit's tests read its Android `app/` tree; those are skipped here and run in the kit's CI.
+
 ## Requirements
 
 - Node.js 22 or newer.
@@ -155,4 +172,4 @@ process is self-contained.
 
 ## License
 
-TODO
+[MIT](./LICENSE)

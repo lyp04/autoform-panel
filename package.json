@@ -8,7 +8,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "node src/server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.js",
+    "sync": "node tools/sync-from-kit.mjs",
+    "sync:check": "node tools/sync-from-kit.mjs --check"
   }
 }
