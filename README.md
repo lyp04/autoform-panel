@@ -1,6 +1,6 @@
 # Autoform-Panel
 
-![ci](https://github.com/your-org/autoform-panel/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/lyp04/autoform-panel/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
 ![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)
 
