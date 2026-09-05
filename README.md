@@ -80,14 +80,10 @@ Settings are read from an env file (`KEY=value`, no shell interpolation). The pa
 
 ### Catalog store
 
-The published catalog can live in the local filesystem or in a GitHub repo.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `CATALOG_STORAGE_MODE` | `r2` | `r2` uses a content-addressed store under `DATA_DIR/catalog`. Any other value falls back to the GitHub store. |
-| `GITHUB_REPO` | — | `owner/repo` for the GitHub store, e.g. `your-org/form-catalog`. |
-| `GITHUB_BRANCH` | `main` | Branch to commit catalog files to. |
-| `GITHUB_TOKEN` | — | Token with write access, required for the GitHub store. |
+The published catalog lives under `DATA_DIR/catalog` as a content-addressed store: immutable
+snapshots plus a `catalog-current-v1.json` pointer that moves under a compare-and-set. A fresh
+install is seeded from `config/seed-catalog` on first run, and `backup/backup.sh` archives the
+whole of `data/` daily (see `config/autoform-panel-backup.timer`).
 
 ### Access control
 

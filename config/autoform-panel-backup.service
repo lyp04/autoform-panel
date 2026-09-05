@@ -1,0 +1,17 @@
+[Unit]
+Description=Back up the autoform-panel runtime data
+After=autoform-panel.service
+
+[Service]
+Type=oneshot
+User=autoform-panel
+Group=autoform-panel
+WorkingDirectory=/opt/autoform-panel
+ExecStart=/opt/autoform-panel/backup/backup.sh
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/autoform-panel/backup
+StandardOutput=journal
+StandardError=journal
