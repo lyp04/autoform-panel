@@ -59,7 +59,10 @@ import {
   validateUpdateSource,
   validateUpdateSourceCompatibility
 } from "./update-source.js";
-import { panelRuntimeFromVersionMetadata } from "./panel-runtime.js";
+import {
+  panelRuntimeFromSelfHostedDeployment,
+  panelRuntimeFromVersionMetadata
+} from "./panel-runtime.js";
 import {
   validateDailyStats,
   validateDailyStatsAlternateEntries,
@@ -97,13 +100,17 @@ export async function handleRequest(request, env) {
       // Pairing is deliberately isolated from both the browser backend session and the catalog read
       // gate. The issuer has its own server-to-server secret; redeem consumes a short one-time ticket.
       if (isAppPairingPath(path)) return await handleAppPairingRequest(request, env, url);
-      // Deployment provenance is intentionally separate from /api/config: Worker versions may
+      // Deployment provenance is intentionally separate from /api/config: deployments may
       // change while the catalog version does not, and the App treats config/catalog as one exact
       // immutable pair. This endpoint is read-key protected but never enters that pair.
+      // A self-hosted deployment has no Worker version binding and reports the commit and tree
+      // digest it was deployed from; on Cloudflare the version metadata binding is authoritative.
       if (path === "/api/runtime-provenance" && request.method === "GET") {
         if (!catalogReadAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
         return json({
-          panelRuntime: panelRuntimeFromVersionMetadata(env.CF_VERSION_METADATA)
+          panelRuntime: env.SELF_HOSTED_DEPLOYMENT
+            ? panelRuntimeFromSelfHostedDeployment(env.SELF_HOSTED_DEPLOYMENT)
+            : panelRuntimeFromVersionMetadata(env.CF_VERSION_METADATA)
         });
       }
       // Browser bootstrap is intentionally available before backend login so the Panel can render the

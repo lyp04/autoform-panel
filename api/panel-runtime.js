@@ -1,4 +1,5 @@
-// Public, deployment-only provenance derived from Cloudflare's version metadata binding.
+// Public, deployment-only provenance for the two ways this panel is deployed: behind
+// Cloudflare's version metadata binding, or self-hosted from a deployed source tree.
 // This module is intentionally pure: malformed or unavailable metadata becomes one fixed
 // unavailable sentinel and no raw binding value is ever reflected to clients.
 
@@ -7,6 +8,8 @@ const VERSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SOURCE_COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 const SOURCE_TAG_PREFIX = "autoform-source-";
+const DEPLOYMENT_KEYS = Object.freeze(["deployedAt", "deploymentSha256", "sourceCommit"]);
+const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const UTC_TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z$/u;
 
@@ -75,6 +78,42 @@ export function panelRuntimeFromVersionMetadata(metadata) {
       workerVersionId: metadata.id,
       sourceCommit,
       versionCreatedAt: metadata.timestamp
+    };
+  } catch {
+    return { ...UNAUTHENTICATED_RUNTIME };
+  }
+}
+
+/**
+ * Convert a self-hosted deployment record to the same App-facing contract.
+ *
+ * `deploymentSha256` is a digest of the deployed tree, computed by the process that serves it.
+ * Unlike a Cloudflare version id it is not witnessed by any third party, so it proves that the
+ * running deployment reports a consistent identity for itself — useful for binding a release to
+ * what is actually deployed, but not an independent attestation. `provenance` says so.
+ */
+export function panelRuntimeFromSelfHostedDeployment(deployment) {
+  try {
+    if (!isPlainObject(deployment) || !hasExactKeys(deployment, DEPLOYMENT_KEYS)) {
+      return { ...UNAUTHENTICATED_RUNTIME };
+    }
+    if (typeof deployment.sourceCommit !== "string"
+        || !SOURCE_COMMIT_PATTERN.test(deployment.sourceCommit)) {
+      return { ...UNAUTHENTICATED_RUNTIME };
+    }
+    if (typeof deployment.deploymentSha256 !== "string"
+        || !SHA256_PATTERN.test(deployment.deploymentSha256)) {
+      return { ...UNAUTHENTICATED_RUNTIME };
+    }
+    if (!validUtcTimestamp(deployment.deployedAt)) {
+      return { ...UNAUTHENTICATED_RUNTIME };
+    }
+    return {
+      version: 1,
+      provenance: "self_hosted_source_commit",
+      deploymentSha256: deployment.deploymentSha256,
+      sourceCommit: deployment.sourceCommit,
+      versionCreatedAt: deployment.deployedAt
     };
   } catch {
     return { ...UNAUTHENTICATED_RUNTIME };

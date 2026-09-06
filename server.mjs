@@ -7,13 +7,15 @@
 //   ASSETS            -> StaticAssets(panel/public)          static SPA files
 //   CATALOG_R2        -> FileSystemR2Bucket(data/catalog)    content-addressed catalog store
 //   APP_PAIR_TICKETS  -> SqliteDurableObjectNamespace(...)   single-writer ticket store
-//   CF_VERSION_METADATA -> { id, tag, timestamp } from the env file
+//   CF_VERSION_METADATA -> { id, tag, timestamp } from the env file (Cloudflare only)
+//   SELF_HOSTED_DEPLOYMENT -> { sourceCommit, deploymentSha256, deployedAt } from this tree
 // Config/secrets come from the env file (AUTOFORM_ENV_FILE, default /etc/autoform-panel/env).
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
-import { mkdirSync, existsSync, cpSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, existsSync, cpSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { loadEnvFile } from "./api/env.mjs";
 import { StaticAssets } from "./stores/static-assets.mjs";
 import { FileSystemR2Bucket } from "./stores/catalog-bucket.mjs";
@@ -57,6 +59,46 @@ bindings.CF_VERSION_METADATA = {
   tag: config.VERSION_TAG || `autoform-source-${config.SOURCE_COMMIT || ""}`,
   timestamp: config.VERSION_TIMESTAMP || new Date().toISOString()
 };
+
+// Digest the code this process actually serves from: api/, stores/, public/ and the two entry
+// files. Data and node_modules are excluded — the first changes constantly and is not code, the
+// second is pinned by package-lock.json. Walked in sorted order so the digest is reproducible.
+function deploymentDigest(root) {
+  const hash = createHash("sha256");
+  hash.update("AUTOFORM_PANEL_DEPLOYMENT_V1\n");
+  const walk = (relative) => {
+    const absolute = path.join(root, relative);
+    let stat;
+    try {
+      stat = statSync(absolute);
+    } catch {
+      return;
+    }
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(absolute).sort()) walk(path.join(relative, entry));
+      return;
+    }
+    if (!stat.isFile()) return;
+    hash.update(`${relative}\n`);
+    hash.update(createHash("sha256").update(readFileSync(absolute)).digest("hex"));
+    hash.update("\n");
+  };
+  for (const entry of ["api", "stores", "public", "server.mjs", "package.json"]) walk(entry);
+  return hash.digest("hex");
+}
+
+const deployedSourceCommit = (() => {
+  const file = path.join(ROOT, "SOURCE_COMMIT");
+  if (!existsSync(file)) return config.SOURCE_COMMIT || "";
+  return readFileSync(file, "utf8").trim();
+})();
+if (/^[0-9a-f]{40}$/u.test(deployedSourceCommit)) {
+  bindings.SELF_HOSTED_DEPLOYMENT = {
+    sourceCommit: deployedSourceCommit,
+    deploymentSha256: deploymentDigest(ROOT),
+    deployedAt: new Date(statSync(path.join(ROOT, "SOURCE_COMMIT")).mtime).toISOString()
+  };
+}
 bindings.ASSETS = new StaticAssets(path.join(ROOT, "public"));
 bindings.CATALOG_R2 = new FileSystemR2Bucket(path.join(DATA_DIR, "catalog"));
 bindings.APP_PAIR_TICKETS = new SqliteDurableObjectNamespace({

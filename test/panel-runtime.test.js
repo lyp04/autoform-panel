@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  panelRuntimeFromSelfHostedDeployment,
   panelRuntimeFromVersionMetadata,
   validPanelSourceCommit
 } from "../api/panel-runtime.js";
@@ -14,6 +15,49 @@ const VERSION_METADATA = Object.freeze({
   id: "01234567-89ab-cdef-0123-456789abcdef",
   tag: `autoform-source-${SOURCE_COMMIT}`,
   timestamp: "2030-04-05T06:07:08.123Z"
+});
+const SELF_HOSTED_DEPLOYMENT = Object.freeze({
+  sourceCommit: SOURCE_COMMIT,
+  deploymentSha256: "b".repeat(64),
+  deployedAt: "2030-04-05T06:07:08.123Z"
+});
+
+test("a self-hosted deployment reports its own digest, not a Worker id", () => {
+  assert.deepEqual(panelRuntimeFromSelfHostedDeployment(SELF_HOSTED_DEPLOYMENT), {
+    version: 1,
+    provenance: "self_hosted_source_commit",
+    deploymentSha256: "b".repeat(64),
+    sourceCommit: SOURCE_COMMIT,
+    versionCreatedAt: "2030-04-05T06:07:08.123Z"
+  });
+});
+
+test("a malformed self-hosted deployment becomes the unavailable sentinel", () => {
+  const unavailable = { version: 0, provenance: "unavailable" };
+  for (const broken of [
+    null,
+    undefined,
+    "deployment",
+    {},
+    { ...SELF_HOSTED_DEPLOYMENT, sourceCommit: "not-a-commit" },
+    { ...SELF_HOSTED_DEPLOYMENT, sourceCommit: SOURCE_COMMIT.toUpperCase() },
+    { ...SELF_HOSTED_DEPLOYMENT, deploymentSha256: "c".repeat(63) },
+    { ...SELF_HOSTED_DEPLOYMENT, deploymentSha256: "not a digest" },
+    { ...SELF_HOSTED_DEPLOYMENT, deployedAt: "2030-04-05 06:07:08" },
+    { ...SELF_HOSTED_DEPLOYMENT, deployedAt: "2030-13-05T06:07:08Z" },
+    { ...SELF_HOSTED_DEPLOYMENT, extra: true }
+  ]) {
+    assert.deepEqual(panelRuntimeFromSelfHostedDeployment(broken), unavailable,
+      `expected the sentinel for ${JSON.stringify(broken)}`);
+  }
+});
+
+test("the two provenance kinds never produce each other's shape", () => {
+  const cloudflare = panelRuntimeFromVersionMetadata(VERSION_METADATA);
+  const selfHosted = panelRuntimeFromSelfHostedDeployment(SELF_HOSTED_DEPLOYMENT);
+  assert.equal(Object.hasOwn(cloudflare, "deploymentSha256"), false);
+  assert.equal(Object.hasOwn(selfHosted, "workerVersionId"), false);
+  assert.notEqual(cloudflare.provenance, selfHosted.provenance);
 });
 
 function installCatalogReadMock(catalog) {
