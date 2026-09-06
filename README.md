@@ -15,6 +15,9 @@ the host around it differs.
   dependencies (it uses `node:sqlite`, `node:crypto`, `node:http`).
 - **`worker`** — the Cloudflare Workers deployment. See that branch's README.
 
+The hosts are not interchangeable when it comes to release evidence: they can prove different
+things about a deployment. See [What each branch can prove](#what-each-branch-can-prove).
+
 ## Where the code comes from
 
 `api/` and `test/` are generated from [autoform-kit](https://github.com/lyp04/autoform-kit), which is
@@ -112,10 +115,50 @@ Leave these unset to disable the AI draft/translate features.
 | `AI_MODEL` | — | Model id, e.g. `your-model`. |
 | `AI_API_KEY` | — | API key for the endpoint. |
 
-### Provenance (optional)
+### Provenance
 
-`VERSION_ID`, `VERSION_TAG`, `VERSION_TIMESTAMP`, `SOURCE_COMMIT` are surfaced by
-`/api/runtime-provenance` and are informational only.
+`/api/runtime-provenance` reports which deployment is running. On this branch it is built from
+`SOURCE_COMMIT` and a digest of the files actually served, and reports
+`provenance: "self_hosted_source_commit"`. On the `worker` branch it comes from Cloudflare's
+version metadata binding and reports `provenance: "cloudflare_version_tag"` with the Worker
+version id.
+
+`VERSION_ID`, `VERSION_TAG` and `VERSION_TIMESTAMP` are only read when there is no deployed
+source tree to derive provenance from; on this branch they are unused. Do not carry them over
+from a previous Cloudflare deployment — a stale `VERSION_ID` makes the panel claim a Worker that
+no longer serves anything.
+
+## What each branch can prove
+
+`autoform-kit`'s release chain requires live evidence about the deployment serving the app, and
+the two branches do not satisfy it the same way. The kit's private release evidence verifier
+takes a `catalogAuthority` whose `type` selects which set of checks must hold.
+
+| | `worker` branch | `server` branch (this one) |
+|---|---|---|
+| Catalog authority `type` | `r2` or `github` | `self-hosted` |
+| Located by | `wrangler`, via account id and worker name | the store path, service user and systemd unit |
+| Catalog store | an R2 bucket or a private GitHub repository | a directory on the same host |
+| Store is private | the bucket or repository is private | no access for others; group access only for the service user's own primary group; no setuid/setgid/sticky |
+| Running code is the reviewed code | Cloudflare's Worker version id | `SOURCE_COMMIT` plus a digest of the served files |
+| Store is a separate system from the code serving it | **yes** — compromising the Worker does not hand over the catalog store | **no** — one host, one process, one user |
+
+That last row is the real difference, and it is a reduction, not a formality. On `worker` the
+catalog store is a different system reached over the network with its own credentials. On
+`server` the process that answers `/catalog/*` is also the process that can read and rewrite the
+store, running as the user that owns it. There is no isolation left to demonstrate, so the
+evidence report omits `catalogAuthoritySeparated` for a self-hosted deployment rather than
+reporting it as true, and carries `catalogStorePrivateOnDisk` instead — what a directory can
+actually demonstrate. `publish-release.sh` requires whichever exact shape matches the declared
+authority type.
+
+The other difference is what identifies the deployment. A Worker version id is assigned by
+Cloudflare, so it is witnessed by someone other than the deployment. The tree digest on this
+branch is computed by the same process that serves the catalog, so it shows the deployment is
+internally consistent and matches a known commit — useful for binding a release to what is
+actually deployed, but not an independent attestation. The contract names it
+`self_hosted_source_commit` so the two are never mistaken for each other, and the verifier
+requires the runtime shape to match the declared authority type in both directions.
 
 ## Layout
 
